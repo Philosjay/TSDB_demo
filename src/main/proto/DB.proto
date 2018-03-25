@@ -1,0 +1,70 @@
+// Copyright 2015, gRPC Authors
+// All rights reserved.
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+// 
+//     http://www.apache.org/licenses/LICENSE-2.0
+// 
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+syntax = "proto3";
+
+option java_multiple_files = true;
+option java_package = "io.grpc.dao";
+option java_outer_classname = "DaoProto";
+option objc_class_prefix = "HLW";
+
+package DB;
+
+// The greeting service definition.
+service DBService {
+  // Sends a greeting
+  //  rpc SayHello (HelloRequest) returns (HelloReply) {}
+  rpc isTableExist(InfoRequest) returns (TableResponse) {}
+  rpc updateTables(InfoRequest) returns (TableResponse) {}
+  rpc recordInfo (InfoRequest) returns (TableResponse) {}
+  rpc findInfo (InfoRequest) returns (TableResponse) {}
+  rpc executeSQLForUpdate (SQLRequest) returns (TableResponse) {}
+  rpc executeSQLForQuery (SQLRequest) returns (TableResponse) {}
+}
+
+// The request message containing the user's name.
+message HelloRequest {
+  string name = 1;
+}
+
+// The response message containing the greetings
+message HelloReply {
+  string message = 1;
+}
+
+message InfoRequest{
+    string userName = 1;
+    map<string,string> columnInfo =2;
+    string devName = 3;
+}
+
+message InfoMap{
+    map<string,string> infoMap = 1;
+}
+
+
+message TableResponse {
+    bool isExist = 1;
+    string mesg = 2;
+    map<string, string> columnInfo = 3;
+
+    repeated InfoMap resultMapList = 4;
+}
+
+message SQLRequest {
+    string sql = 1;
+    string userName = 2;
+}
+
+
