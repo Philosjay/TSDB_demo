@@ -3,13 +3,10 @@ package app;
 import ClientHelpers.CpuInfoCollector;
 import ClientHelpers.DiskInfoCollector;
 import ClientHelpers.InfoCollector;
-import com.google.common.collect.Table;
 import io.grpc.ManagedChannel;
 import io.grpc.ManagedChannelBuilder;
 import io.grpc.StatusRuntimeException;
 import io.grpc.dao.*;
-
-import java.lang.reflect.Array;
 import java.util.*;
 import java.util.concurrent.TimeUnit;
 import java.util.logging.Level;
@@ -25,6 +22,18 @@ public class DBClient {
 
     private void setUserName(String userName){
         this.userName = userName;
+    }
+
+    private void putMapIntoRequest(HashMap<String,Object> map, InfoRequest.Builder builder ){
+        //遍历HashMap，获得列名称
+        Iterator iter = map.entrySet().iterator();
+        while (iter.hasNext()) {
+            Map.Entry entry = (Map.Entry)iter.next();
+            Object key = entry.getKey();
+            Object value = entry.getValue();
+            builder.putColumnInfo(key.toString(),value.toString());
+        }
+
     }
 
 
@@ -102,15 +111,8 @@ public class DBClient {
 
                 HashMap<String,Object> map = infoCollectors.get(i).filterInfo(infoCollectors.get(i).getInfoHashList().get(j)) ;
                 //更新table 的列
-                //遍历HashMap，获得列名称
-                Iterator iter = map.entrySet().iterator();
-                while (iter.hasNext()) {
-                    Map.Entry entry = (Map.Entry)iter.next();
-                    Object key = entry.getKey();
-                    Object value = entry.getValue();
-                    builder.putColumnInfo(key.toString(),value.toString());
-                }
 
+                putMapIntoRequest(map,builder);
 
                 builder.setUserName(userName);
                 InfoRequest request = builder.build();
@@ -125,7 +127,7 @@ public class DBClient {
     }
 
     public void recordInfo(){
-        for(int i=0; i<infoCollectors.size();i++){
+        for(int i = 0; i < infoCollectors.size(); i++){
             InfoCollector collector =  infoCollectors.get(i);
             int mapListSize = collector.getInfoHashList().size();
 
@@ -134,18 +136,8 @@ public class DBClient {
 
                 InfoRequest.Builder builder = InfoRequest.newBuilder();
                 //更新table 的列
-                //遍历HashMap，获得列名称
-                Iterator iter = map.entrySet().iterator();
-                while (iter.hasNext()) {
-                    Map.Entry entry = (Map.Entry)iter.next();
-                    Object key = entry.getKey();
-                    Object value = entry.getValue();
 
-
-                    builder.putColumnInfo(key.toString(),value.toString());
-
-                }
-
+                putMapIntoRequest(map,builder);
                 builder.setUserName(userName);
                 InfoRequest request = builder.build();
                 TableResponse response = blockingStub.recordInfo(request);
@@ -156,6 +148,8 @@ public class DBClient {
 
 
     }
+
+
 
     public List<HashMap<String,String>> findInfo(String devName, String[] infoType){
         logger.info("=========================================================");
@@ -248,15 +242,17 @@ public class DBClient {
             client.syncRemoteDB();
 
 
+
+
             /** 开始录入监控信息 **/
-/*            client.recordInfo();
+            client.recordInfo();
 
             String devName = "cpu1";
             String[] infoType = {"time", "userUseRate", "totalUseRate"};
             List<HashMap<String,String>> mapList =  client.findInfo(devName, infoType);
             for (int i=0; i< mapList.size(); i++){
                 logger.info(mapList.get(i).toString());
-            }*/
+            }
 
 
             String sql = "select * from tb_cpu3_Harry ";
