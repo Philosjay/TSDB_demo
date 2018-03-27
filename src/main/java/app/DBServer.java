@@ -147,7 +147,7 @@ public class  DBServer {
             dao.addInfoToBatch(info,tableName);
             logger.info("recorded info for " + req.getDevName()  + "th");
 
-            if(req.getDevName().equals("2000")){
+            if(req.getDevName().equals("1000")){
                 dao.executeBatch();
             }
 

@@ -150,24 +150,27 @@ public class DBClient {
     public void recordForServerTest(int count){
 
             InfoCollector collector =  infoCollectors.get(0);
-            int mapListSize = collector.getInfoHashList().size();
 
-            HashMap<String,Object> map = collector.filterInfo(collector.getInfoHashList().get(0));
+
+           HashMap<String,Object>[] maps = new HashMap[4];
+           maps[0] = collector.filterInfo(collector.getInfoHashList().get(0));
+           maps[1] = collector.filterInfo(collector.getInfoHashList().get(1));
+           maps[2] = collector.filterInfo(collector.getInfoHashList().get(2));
+           maps[3] = collector.filterInfo(collector.getInfoHashList().get(3));
 
             for (int i=1 ;i<count+1; i++){
 
+                for (int j=0; j<4; j++){
+                    InfoRequest.Builder builder = InfoRequest.newBuilder();
+                    //更新table 的列
+                    putMapIntoRequest(maps[j],builder);
+                    builder.setUserName(userName);
+                    builder.setDevName(i + "");
+                    InfoRequest request = builder.build();
+                    TableResponse response = blockingStub.recordInfo(request);
 
-            InfoRequest.Builder builder = InfoRequest.newBuilder();
-            //更新table 的列
-
-            putMapIntoRequest(map,builder);
-            builder.setUserName(userName);
-            builder.setDevName(i + "");
-            InfoRequest request = builder.build();
-            TableResponse response = blockingStub.recordInfo(request);
-
-            logger.info(response.getMesg());
-
+                    logger.info(response.getMesg());
+                }
         }
 
 
@@ -289,7 +292,7 @@ public class DBClient {
 
 
             long startTime=System.currentTimeMillis();//记录开始时间
-            client.recordForServerTest(2000);
+            client.recordForServerTest(1000);
             long endTime=System.currentTimeMillis();//记录结束时间
             float excTime=(float)(endTime-startTime)/1000;
             System.out.println(excTime);

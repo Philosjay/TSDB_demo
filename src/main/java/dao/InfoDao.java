@@ -70,10 +70,9 @@ public class InfoDao {
 					sql_values += ")";
 				}
 			}
-			
-			Map<String, Object> map = info;
+
 			int i=0;
-			for (Entry entry : map.entrySet()) {
+			for (Entry entry : info.entrySet()) {
 				sql_cols += entry.getKey().toString();
 				if(i<info.size()-1){
 					sql_cols += ",";
