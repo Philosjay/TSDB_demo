@@ -154,7 +154,7 @@ public class DBClient {
 
             HashMap<String,Object> map = collector.filterInfo(collector.getInfoHashList().get(0));
 
-            for (int i=0 ;i<count; i++){
+            for (int i=1 ;i<count+1; i++){
 
 
             InfoRequest.Builder builder = InfoRequest.newBuilder();
@@ -293,7 +293,6 @@ public class DBClient {
             long endTime=System.currentTimeMillis();//记录结束时间
             float excTime=(float)(endTime-startTime)/1000;
             System.out.println(excTime);
-
 
 
 

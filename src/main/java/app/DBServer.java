@@ -140,13 +140,22 @@ public class  DBServer {
             InfoDao dao = daoManager.getDao(tableName);
 
             HashMap<String,Object> info = new HashMap<String, Object>(req.getColumnInfoMap());
-            dao.addInfo_withoutBatch(info, tableName);
+            if(req.getDevName().equals("1")){
+                dao.prepareBatch(info,tableName);
+            }
+
+            dao.addInfoToBatch(info,tableName);
+            logger.info("recorded info for " + req.getDevName()  + "th");
+
+            if(req.getDevName().equals("2000")){
+                dao.executeBatch();
+            }
+
 
             TableResponse reply = TableResponse.newBuilder().setMesg("record info for : " + tableName + " success").build();
             responseObserver.onNext(reply);
             responseObserver.onCompleted();
 
-            logger.info("recorded info for " + req.getDevName()  + "th");
             logger.info(req.getColumnInfoMap().toString());
 
         }
