@@ -162,6 +162,7 @@ public class DBClient {
 
             putMapIntoRequest(map,builder);
             builder.setUserName(userName);
+            builder.setDevName(i + "");
             InfoRequest request = builder.build();
             TableResponse response = blockingStub.recordInfo(request);
 
@@ -286,7 +287,14 @@ public class DBClient {
             client.executeSQLForUpdate(sql);
 */
 
-            client.recordForServerTest(200);
+
+            long startTime=System.currentTimeMillis();//记录开始时间
+            client.recordForServerTest(2000);
+            long endTime=System.currentTimeMillis();//记录结束时间
+            float excTime=(float)(endTime-startTime)/1000;
+            System.out.println(excTime);
+
+
 
 
 

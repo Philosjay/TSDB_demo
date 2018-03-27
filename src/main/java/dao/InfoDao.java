@@ -107,8 +107,6 @@ public class InfoDao {
 				i++;
 			}
 			
-			
-			
 			pstm.addBatch();
 
 		} catch (SQLException e) {
@@ -123,6 +121,54 @@ public class InfoDao {
 		prepareBatch(info, tableName);
 		addInfoToBatch(info, tableName);
 		executeBatch();
+	}
+
+	public void addInfo_withoutBatch(HashMap<String, Object> info,String tableName){
+
+		try{
+			String sql_colName = "INSERT INTO " + tableName + "(" ;
+			String sql_values = "VALUES (" ;
+
+			int count =1;
+			int size = info.size();
+			Iterator iter = info.entrySet().iterator();
+			while (iter.hasNext()) {
+				Map.Entry entry = (Map.Entry)iter.next();
+				Object val = entry.getValue();
+				Object key = entry.getKey();
+
+
+
+				sql_colName += key.toString();
+				sql_values += "'" + val.toString() + "'";
+				if(count < size){
+					sql_colName += ", ";
+					sql_values += ", ";
+				}
+				count++;
+			}
+			sql_colName += ")";
+			sql_values += ")";
+
+			String sql = sql_colName + sql_values;
+
+			stm = con.createStatement();
+			stm.executeUpdate(sql);
+
+		}catch(Exception e){
+			throw new RuntimeException(e);
+		}
+		finally{
+			try {
+				if(rs!=null) rs.close();
+				if(stm!=null)stm.close();
+			} catch (SQLException e) {
+				// TODO Auto-generated catch block
+				throw new RuntimeException(e);
+			}
+
+		}
+
 	}
 	
 	public void executeBatch(){
