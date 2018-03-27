@@ -145,6 +145,29 @@ public class DBClient {
                 logger.info(response.getMesg());
             }
         }
+    }
+
+    public void recordForServerTest(int count){
+
+            InfoCollector collector =  infoCollectors.get(0);
+            int mapListSize = collector.getInfoHashList().size();
+
+            HashMap<String,Object> map = collector.filterInfo(collector.getInfoHashList().get(0));
+
+            for (int i=0 ;i<count; i++){
+
+
+            InfoRequest.Builder builder = InfoRequest.newBuilder();
+            //更新table 的列
+
+            putMapIntoRequest(map,builder);
+            builder.setUserName(userName);
+            InfoRequest request = builder.build();
+            TableResponse response = blockingStub.recordInfo(request);
+
+            logger.info(response.getMesg());
+
+        }
 
 
     }
@@ -245,6 +268,7 @@ public class DBClient {
 
 
             /** 开始录入监控信息 **/
+/*
             client.recordInfo();
 
             String devName = "cpu1";
@@ -260,7 +284,9 @@ public class DBClient {
 
             sql = "delete from tb_cpu5_Harry ";
             client.executeSQLForUpdate(sql);
+*/
 
+            client.recordForServerTest(200);
 
 
 
