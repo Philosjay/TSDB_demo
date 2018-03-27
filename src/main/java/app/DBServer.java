@@ -137,12 +137,9 @@ public class  DBServer {
 
 
             // 每次录入信息及时生成一个InfoDao
-            InfoDao dao = new InfoDao();
-
-            dao.prepareConnection();
+            InfoDao dao = daoManager.getDao(tableName);
             HashMap<String,Object> info = new HashMap<String, Object>(req.getColumnInfoMap());
             dao.addInfo_withoutBatch(info, tableName);
-            dao.closeConnection();
 
 
             TableResponse reply = TableResponse.newBuilder().setMesg("record info for : " + tableName + " success").build();
