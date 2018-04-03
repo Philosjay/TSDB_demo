@@ -57,32 +57,9 @@ public class InfoDao {
 	public void prepareBatch(HashMap<String, Object> info,String tableName){
 		
 		//插入信息
-		try {			
-			//完善sql模板
-
-			sql_cols = "insert into " + tableName  + "(";
-			sql_values = "values (";
-			for(int i=0; i< info.size(); i++){
-				sql_values += "?";
-				if(i<info.size()-1){
-					sql_values += ",";
-				}else{
-					sql_values += ")";
-				}
-			}
-
-			int i=0;
-			for (Entry entry : info.entrySet()) {
-				sql_cols += entry.getKey().toString();
-				if(i<info.size()-1){
-					sql_cols += ",";
-				}else{
-					sql_cols += ")";
-				}
-				i++;
-			}
+		try {
 			
-			pstm = con.prepareStatement(sql_cols + sql_values);	
+			stm = con.createStatement();
 			
 		} catch (SQLException e) {
 			// TODO Auto-generated catch block
@@ -90,23 +67,38 @@ public class InfoDao {
 		}
 	}
 	
-	public void addInfoToBatch(HashMap<String, Object> info,String tableName){
+	public void addInfoToBatch(HashMap<String, Object> info, String tableName){
 		
 		//插入信息
-		try {			
+		try {
 
-			//遍历HashMap，获得列名称
-			int i =1;
-			Iterator iter = info.entrySet().iterator();
-			while (iter.hasNext()) {
-				Map.Entry entry = (Map.Entry)iter.next();
-				Object val = entry.getValue();
+            String sql_colName = "INSERT INTO " + tableName + "(" ;
+            String sql_values = "VALUES (" ;
 
-				pstm.setString(i, val.toString());
-				i++;
-			}
-			
-			pstm.addBatch();
+            int count =1;
+            int size = info.size();
+            Iterator iter = info.entrySet().iterator();
+            while (iter.hasNext()) {
+                Map.Entry entry = (Map.Entry)iter.next();
+                Object val = entry.getValue();
+                Object key = entry.getKey();
+
+
+
+                sql_colName += key.toString();
+                sql_values += "'" + val.toString() + "'";
+                if(count < size){
+                    sql_colName += ", ";
+                    sql_values += ", ";
+                }
+                count++;
+            }
+            sql_colName += ")";
+            sql_values += ")";
+
+            String sql = sql_colName + sql_values;
+
+            stm.addBatch(sql);
 
 		} catch (SQLException e) {
 			// TODO Auto-generated catch block
@@ -172,7 +164,7 @@ public class InfoDao {
 	
 	public void executeBatch(){
 		try {
-			pstm.executeBatch();
+			stm.executeBatch();
 			
 		} catch (SQLException e) {
 			// TODO Auto-generated catch block
@@ -181,7 +173,7 @@ public class InfoDao {
 		finally{
 			try {
 				if(rs!=null) rs.close();
-				if(pstm!=null)	pstm.close();
+				if(stm!=null)	stm.close();
 			} catch (SQLException e) {
 				// TODO Auto-generated catch block
 				throw new RuntimeException(e);

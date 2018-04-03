@@ -66,5 +66,3 @@ message SQLRequest {
     string sql = 1;
     string userName = 2;
 }
-
-

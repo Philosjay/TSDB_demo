@@ -147,33 +147,30 @@ public class DBClient {
         }
     }
 
-    public void recordForServerTest(int count){
+    public boolean recordForServerTest(List<HashMap<String,Object>> infoList){
 
-            InfoCollector collector =  infoCollectors.get(0);
+        boolean isEnd = false;
+
+        for (int i=0;i<infoList.size();i++){
+            HashMap<String,Object> map = infoList.get(i);
+
+            InfoRequest.Builder builder = InfoRequest.newBuilder();
+            //更新table 的列
+
+            putMapIntoRequest(map,builder);
+            builder.setUserName(userName);
+            InfoRequest request = builder.build();
+            TableResponse response = blockingStub.recordInfo(request);
+
+            logger.info(response.getMesg());
 
 
-           HashMap<String,Object>[] maps = new HashMap[4];
-           maps[0] = collector.filterInfo(collector.getInfoHashList().get(0));
-           maps[1] = collector.filterInfo(collector.getInfoHashList().get(1));
-           maps[2] = collector.filterInfo(collector.getInfoHashList().get(2));
-           maps[3] = collector.filterInfo(collector.getInfoHashList().get(3));
-
-            for (int i=1 ;i<count+1; i++){
-
-                for (int j=0; j<4; j++){
-                    InfoRequest.Builder builder = InfoRequest.newBuilder();
-                    //更新table 的列
-                    putMapIntoRequest(maps[j],builder);
-                    builder.setUserName(userName);
-                    builder.setDevName(i + "");
-                    InfoRequest request = builder.build();
-                    TableResponse response = blockingStub.recordInfo(request);
-
-                    logger.info(response.getMesg());
-                }
+            if (response.getIsExist()){
+                isEnd = true;
+            }
         }
 
-
+        return isEnd;
     }
 
 
@@ -290,12 +287,31 @@ public class DBClient {
             client.executeSQLForUpdate(sql);
 */
 
+            List<HashMap<String,Object>> infoList = new ArrayList<>();
+            for(int i = 0; i < infoCollectors.size(); i++){
+                InfoCollector collector =  infoCollectors.get(i);
+                int mapListSize = collector.getInfoHashList().size();
+
+                for (int j = 0; j < mapListSize; j ++){
+                    HashMap<String,Object> map = collector.filterInfo(collector.getInfoHashList().get(j));
+
+                    infoList.add(map);
+                }
+            }
 
             long startTime=System.currentTimeMillis();//记录开始时间
-            client.recordForServerTest(1000);
+            while (true){
+                if (client.recordForServerTest(infoList)){
+                    break;
+                }
+
+            }
+
             long endTime=System.currentTimeMillis();//记录结束时间
             float excTime=(float)(endTime-startTime)/1000;
             System.out.println(excTime);
+
+
 
 
 
