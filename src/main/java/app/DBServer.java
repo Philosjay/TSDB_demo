@@ -146,7 +146,7 @@ public class  DBServer {
             dao.addInfoToBatch(info,tableName);
             logger.info("recorded info for " + infoCount  + "th");
 
-            if(infoCount == 1000){
+            if(infoCount == 2000){
                 dao.executeBatch();
                 TableResponse reply = TableResponse.newBuilder().setIsExist(true).build();
                 responseObserver.onNext(reply);
