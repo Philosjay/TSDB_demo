@@ -131,6 +131,7 @@ public class OSUtils {
         	 tmp.put("errorRate",cpuList[i].getNice());
         	 tmp.put("idleRate",cpuList[i].getIdle());
         	 tmp.put("totalUseRate",cpuList[i].getCombined());
+        	 tmp.put("type","cpu");
         	 
         	 SimpleDateFormat df = new SimpleDateFormat("yyyy-MM-dd-HH-mm-ss");
 /*        	 String[] time = df.format(System.currentTimeMillis()).split("-");

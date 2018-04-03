@@ -133,16 +133,6 @@ public class InfoDao {
 			// TODO Auto-generated catch block
 			e.printStackTrace();
 		}
-		finally{
-			try {
-				if(rs!=null) rs.close();
-				if(pstm!=null)	pstm.close();
-			} catch (SQLException e) {
-				// TODO Auto-generated catch block
-				throw new RuntimeException(e);
-			}
-			
-		}
 	}
 	
 	
@@ -180,7 +170,8 @@ public class InfoDao {
 			String sql = "CREATE table " + tableName;
 			sql += "(" + "id INT UNSIGNED  PRIMARY KEY AUTO_INCREMENT,"
 					+	"name varchar(50),"
-					+ 	"time TIMESTAMP  "
+					+ 	"time TIMESTAMP, "
+					+ "type varchar(50) "
 					+ ")";
 			stm = con.createStatement();		
 			stm.executeUpdate(sql);

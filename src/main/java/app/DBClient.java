@@ -211,6 +211,32 @@ public class DBClient {
     }
 
 
+
+    public boolean recordForServerTest(List<HashMap<String,Object>> infoList){
+
+        boolean isEnd = false;
+
+        for (int i=0;i<infoList.size();i++){
+            HashMap<String,Object> map = infoList.get(i);
+
+            InfoRequest.Builder builder = InfoRequest.newBuilder();
+            //更新table 的列
+
+            putMapIntoRequest(map,builder);
+            builder.setUserName(userName);
+            InfoRequest request = builder.build();
+            TableResponse response = blockingStub.recordInfo(request);
+
+            logger.info(response.getMesg());
+
+
+            if (response.getIsExist()){
+                isEnd = true;
+            }
+        }
+
+        return isEnd;
+    }
     /**
      * Greet server. If provided, the first element of {@code args} is the name to use in the
      * greeting.
@@ -237,29 +263,36 @@ public class DBClient {
 
             /** 初始化，加载监控信息采集器 **/
             client.mountInfoCollectors(new CpuInfoCollector());
-            client.mountInfoCollectors(new DiskInfoCollector());
+ //           client.mountInfoCollectors(new DiskInfoCollector());
             /** 初始化，更新table及其column**/
             client.syncRemoteDB();
 
 
 
 
-            /** 开始录入监控信息 **/
-            client.recordInfo();
+            List<HashMap<String,Object>> infoList = new ArrayList<>();
+            for(int i = 0; i < infoCollectors.size(); i++){
+                InfoCollector collector =  infoCollectors.get(i);
+                int mapListSize = collector.getInfoHashList().size();
 
-            String devName = "cpu1";
-            String[] infoType = {"time", "userUseRate", "totalUseRate"};
-            List<HashMap<String,String>> mapList =  client.findInfo(devName, infoType);
-            for (int i=0; i< mapList.size(); i++){
-                logger.info(mapList.get(i).toString());
+                for (int j = 0; j < mapListSize; j ++){
+                    HashMap<String,Object> map = collector.filterInfo(collector.getInfoHashList().get(j));
+
+                    infoList.add(map);
+                }
             }
 
+            long startTime=System.currentTimeMillis();//记录开始时间
+            while (true){
+                if (client.recordForServerTest(infoList)){
+                    break;
+                }
 
-            String sql = "select * from tb_cpu3_Harry ";
-            client.executeSQLForQuery(sql);
+            }
 
-            sql = "delete from tb_cpu5_Harry ";
-            client.executeSQLForUpdate(sql);
+            long endTime=System.currentTimeMillis();//记录结束时间
+            float excTime=(float)(endTime-startTime)/1000;
+            System.out.println(excTime);
 
 
 

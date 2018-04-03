@@ -98,29 +98,35 @@ public class  DBServer {
 
             HashMap<String,Object> info = new HashMap<String, Object>(req.getColumnInfoMap());
 
-            String tableName = TableNameModifier.generateTableName(req.getColumnInfoMap().get("name"),req.getUserName());
-            InfoDao dao = new InfoDao();
-            dao.prepareConnection();
+            String tableName = TableNameModifier.generateTableName(req.getColumnInfoMap().get("type"),req.getUserName());
 
-            /** 一个table 对应一个Dao, 也就拥有了一个专属的Connection **/
-            daoManager.claimDao(tableName, dao);
+            if(daoManager.getDao(tableName) == null){
+                InfoDao dao = new InfoDao();
+                dao.prepareConnection();
+                dao.prepareBatch(info,tableName);
+
+                /** 一个table 对应一个Dao, 也就拥有了一个专属的Connection **/
+                daoManager.claimDao(tableName, dao);
+
+                if(!dao.isTableExist(tableName))	dao.createTable(tableName);
+
+                // 一个数据对象对应一张table，如果表不存在添加新table
 
 
-            // 一个数据对象对应一张table，如果表不存在添加新table
-            if(!dao.isTableExist(tableName))	dao.createTable(tableName);
+                //更新table 的列
+                //遍历HashMap，获得列名称
+                Iterator iter = info.entrySet().iterator();
+                while (iter.hasNext()) {
+                    Map.Entry entry = (Map.Entry)iter.next();
+                    Object key = entry.getKey();
 
-            //更新table 的列
-            //遍历HashMap，获得列名称
-            Iterator iter = info.entrySet().iterator();
-            while (iter.hasNext()) {
-                Map.Entry entry = (Map.Entry)iter.next();
-                Object key = entry.getKey();
+                    if(!dao.isColExist(key.toString(), tableName)){
+                        dao.addColumn(key.toString(),tableName);
+                    }
 
-                if(!dao.isColExist(key.toString(), tableName)){
-                    dao.addColumn(key.toString(),tableName);
                 }
-
             }
+
 
             TableResponse reply = TableResponse.newBuilder().setMesg("update table: " + tableName + " success").build();
             responseObserver.onNext(reply);
@@ -130,24 +136,34 @@ public class  DBServer {
             logger.info(req.getColumnInfoMap().toString());
         }
 
+
+        private int infoCount=0;
         @Override
         public void recordInfo(InfoRequest req, StreamObserver<TableResponse> responseObserver){
             /** 录入信息时, 调出该table 专属的Dao **/
-            String tableName = TableNameModifier.generateTableName(req.getColumnInfoMap().get("name"),req.getUserName());
+            String tableName = TableNameModifier.generateTableName(req.getColumnInfoMap().get("type"),req.getUserName());
             InfoDao dao = daoManager.getDao(tableName);
             HashMap<String,Object> info = new HashMap<String, Object>(req.getColumnInfoMap());
 
-            dao.addInfo(info, tableName);
+            dao.addInfoToBatch(info,tableName);
 
 
-            TableResponse reply = TableResponse.newBuilder().setMesg("record info for : " + tableName + " success").build();
-            responseObserver.onNext(reply);
-            responseObserver.onCompleted();
+            if (infoCount == 2000){
+                dao.executeBatch();
 
+                TableResponse reply = TableResponse.newBuilder().setIsExist(true).build();
+                responseObserver.onNext(reply);
+                responseObserver.onCompleted();
+            }else {
+                TableResponse reply = TableResponse.newBuilder().setIsExist(false).build();
+                responseObserver.onNext(reply);
+                responseObserver.onCompleted();
+            }
 
             logger.info("recorded info for : " + tableName );
             logger.info(req.getColumnInfoMap().toString());
 
+            infoCount++;
         }
 
         @Override
