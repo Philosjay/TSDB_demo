@@ -182,6 +182,61 @@ public class  DBServer {
         }
 
         @Override
+        public StreamObserver<InfoRequest> recordInfoByStream(final StreamObserver<TableResponse> responseObserver) {
+            return new StreamObserver<InfoRequest>() {
+
+                @Override
+                public void onNext(InfoRequest req) {
+                    /** 录入信息时, 调出该table 专属的Dao **/
+                    String tableName = TableNameModifier.generateTableName(req.getColumnInfoMap().get("type"),req.getUserName());
+                    InfoDao dao = daoManager.getDao(tableName);
+                    HashMap<String,Object> info = new HashMap<String, Object>(req.getColumnInfoMap());
+
+                    dao.addInfoToBatch(info,tableName);
+
+                    if(infoCount ==1 ){
+                        startTime=System.currentTimeMillis();//记录开始时间
+                    }
+
+
+                    if (infoCount >= 200000){
+
+
+
+                        dao.executeBatch();
+
+                        long endTime=System.currentTimeMillis();//记录结束时间
+                        float excTime=(float)(endTime-startTime)/1000;
+                        System.out.println(excTime);
+
+
+                    }else {
+                        logger.info("recorded info for : " + infoCount + "th" );
+                    }
+
+
+
+                    infoCount++;
+
+
+                }
+
+                @Override
+                public void onError(Throwable t) {
+                    logger.info("Encountered error in recordInfoByStream");
+                }
+
+                @Override
+                public void onCompleted() {
+                    responseObserver.onNext(TableResponse.newBuilder().build());
+                    responseObserver.onCompleted();
+                }
+            };
+        }
+
+
+
+        @Override
         public void findInfo(InfoRequest req, StreamObserver<TableResponse> responseObserver){
             logger.info("tring to find info for: " + req.getDevName());
 
