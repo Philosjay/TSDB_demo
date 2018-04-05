@@ -1,27 +1,110 @@
-package app;
+package testUnits;
 
 import ClientHelpers.CpuInfoCollector;
 import ClientHelpers.InfoCollector;
 import io.grpc.ManagedChannel;
 import io.grpc.ManagedChannelBuilder;
 import io.grpc.StatusRuntimeException;
-import io.grpc.dao.*;
+import io.grpc.dao.DBServiceGrpc;
+import io.grpc.dao.InfoRequest;
+import io.grpc.dao.SQLRequest;
+import io.grpc.dao.TableResponse;
+
 import java.util.*;
 import java.util.concurrent.TimeUnit;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
-public class DBClient {
+public class Client implements Runnable{
 
     /** 远程链接准备项 **/
-    private static final Logger logger = Logger.getLogger(DBClient.class.getName());
+    private final Logger logger = Logger.getLogger(Client.class.getName());
     private final ManagedChannel channel;
     private final DBServiceGrpc.DBServiceBlockingStub blockingStub;
     private  String userName;
 
-    private void setUserName(String userName){
-        this.userName = userName;
+    private static float runtime = 0;
+
+    /** 本地监控数据采集准备项 **/
+    public  final List<InfoCollector> infoCollectors = new ArrayList<InfoCollector>();
+
+
+    /** Construct client connecting to HelloWorld server at {@code host:port}. */
+    public Client(String host, int port, String clientName) {
+        this(ManagedChannelBuilder.forAddress(host, port)
+                // Channels are secure by default (via SSL/TLS). For the example we disable TLS to avoid
+                // needing certificates.
+                .usePlaintext(true)
+                .build());
+
+        userName = clientName;
     }
+
+    /** Construct client for accessing RouteGuide server using the existing channel. */
+    Client(ManagedChannel channel) {
+        this.channel = channel;
+        blockingStub = DBServiceGrpc.newBlockingStub(channel);
+    }
+
+
+
+
+    public  void run(){
+
+        /** 完成登录客户端 **/
+  //      Client client = new Client("localhost", 50051);
+        try {
+
+
+            /** 初始化，加载监控信息采集器 **/
+            mountInfoCollectors(new CpuInfoCollector());
+            //           client.mountInfoCollectors(new DiskInfoCollector());
+            /** 初始化，更新table及其column**/
+            syncRemoteDB();
+
+
+
+
+            List<HashMap<String,Object>> infoList = new ArrayList<>();
+            for(int i = 0; i < infoCollectors.size(); i++){
+                InfoCollector collector =  infoCollectors.get(i);
+                int mapListSize = collector.getInfoHashList().size();
+
+                for (int j = 0; j < mapListSize; j ++){
+                    HashMap<String,Object> map = collector.filterInfo(collector.getInfoHashList().get(j));
+
+                    infoList.add(map);
+                }
+            }
+
+            long startTime=System.currentTimeMillis();//记录开始时间
+            while (true){
+                if (recordForServerTest(infoList)){
+                    break;
+                }
+
+            }
+
+            long endTime=System.currentTimeMillis();//记录结束时间
+            float excTime=(float)(endTime-startTime)/1000;
+            runtime += excTime;
+            System.out.println(userName + " done: " + excTime);
+            System.out.println("runtime: " + runtime);
+
+
+        } finally {
+            try {
+                shutdown();
+            } catch (InterruptedException e) {
+                e.printStackTrace();
+            }
+        }
+
+
+
+
+    }
+
 
     private void putMapIntoRequest(HashMap<String,Object> map, InfoRequest.Builder builder ){
         //遍历HashMap，获得列名称
@@ -36,25 +119,6 @@ public class DBClient {
     }
 
 
-    /** 本地监控数据采集准备项 **/
-    public  static final List<InfoCollector> infoCollectors = new ArrayList<InfoCollector>();
-
-
-
-    /** Construct client connecting to HelloWorld server at {@code host:port}. */
-    public DBClient(String host, int port) {
-        this(ManagedChannelBuilder.forAddress(host, port)
-                // Channels are secure by default (via SSL/TLS). For the example we disable TLS to avoid
-                // needing certificates.
-                .usePlaintext(true)
-                .build());
-    }
-
-    /** Construct client for accessing RouteGuide server using the existing channel. */
-    DBClient(ManagedChannel channel) {
-        this.channel = channel;
-        blockingStub = DBServiceGrpc.newBlockingStub(channel);
-    }
 
     public void shutdown() throws InterruptedException {
         channel.shutdown().awaitTermination(5, TimeUnit.SECONDS);
@@ -99,7 +163,7 @@ public class DBClient {
     }
 
     public void syncRemoteDB(){
-        logger.info("Will try to sync  " + " ...");
+        logger.info(userName + " will try to sync  " + " ...");
 
 
 
@@ -231,6 +295,7 @@ public class DBClient {
 
             if (response.getIsExist()){
                 isEnd = true;
+                break;
             }
         }
 
@@ -240,70 +305,7 @@ public class DBClient {
      * Greet server. If provided, the first element of {@code args} is the name to use in the
      * greeting.
      */
-    public static void main(String[] args) throws Exception {
 
-        /** 完成登录客户端 **/
-        DBClient client = new DBClient("localhost", 50051);
-        try {
-
-            /* Access a service running on the local machine on port 50051 */
-            String user = "Link";
-            if (args.length > 0) {
-                user = args[0]; /* Use the arg as the name to greet if provided */
-            }
-
-
-            if(!client.signIn(user)){
-                client.signUp(user);
-            }
-
-            client.setUserName(user);
-
-
-            /** 初始化，加载监控信息采集器 **/
-            client.mountInfoCollectors(new CpuInfoCollector());
- //           client.mountInfoCollectors(new DiskInfoCollector());
-            /** 初始化，更新table及其column**/
-            client.syncRemoteDB();
-
-
-
-
-            List<HashMap<String,Object>> infoList = new ArrayList<>();
-            for(int i = 0; i < infoCollectors.size(); i++){
-                InfoCollector collector =  infoCollectors.get(i);
-                int mapListSize = collector.getInfoHashList().size();
-
-                for (int j = 0; j < mapListSize; j ++){
-                    HashMap<String,Object> map = collector.filterInfo(collector.getInfoHashList().get(j));
-
-                    infoList.add(map);
-                }
-            }
-
-            long startTime=System.currentTimeMillis();//记录开始时间
-            while (true){
-                if (client.recordForServerTest(infoList)){
-                    break;
-                }
-
-            }
-
-            long endTime=System.currentTimeMillis();//记录结束时间
-            float excTime=(float)(endTime-startTime)/1000;
-            System.out.println(excTime);
-
-
-
-
-        } finally {
-            client.shutdown();
-        }
-
-
-
-
-    }
 
 
 }

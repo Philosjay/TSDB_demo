@@ -137,7 +137,8 @@ public class  DBServer {
         }
 
 
-        private int infoCount=0;
+        private int infoCount=1;
+        long startTime;
         @Override
         public void recordInfo(InfoRequest req, StreamObserver<TableResponse> responseObserver){
             /** 录入信息时, 调出该table 专属的Dao **/
@@ -147,21 +148,35 @@ public class  DBServer {
 
             dao.addInfoToBatch(info,tableName);
 
+            if(infoCount ==1 ){
+                startTime=System.currentTimeMillis();//记录开始时间
+            }
 
-            if (infoCount == 2000){
+
+
+
+            if (infoCount > 200000){
+
+                long endTime=System.currentTimeMillis();//记录结束时间
+                float excTime=(float)(endTime-startTime)/1000;
+                System.out.println(excTime);
+
                 dao.executeBatch();
 
                 TableResponse reply = TableResponse.newBuilder().setIsExist(true).build();
                 responseObserver.onNext(reply);
                 responseObserver.onCompleted();
+
+
+
             }else {
                 TableResponse reply = TableResponse.newBuilder().setIsExist(false).build();
                 responseObserver.onNext(reply);
                 responseObserver.onCompleted();
+                logger.info("recorded info for : " + infoCount + "th" );
             }
 
-            logger.info("recorded info for : " + tableName );
-            logger.info(req.getColumnInfoMap().toString());
+
 
             infoCount++;
         }
