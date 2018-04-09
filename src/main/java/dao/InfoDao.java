@@ -8,7 +8,7 @@ import utils.JdbcUtils;
 
 public class InfoDao {
 	Connection con=null;
-	PreparedStatement pstm = null;
+	HashMap<String,PreparedStatement> pstmMap = new HashMap<String,PreparedStatement>();
 	Statement stm = null;
 	ResultSet rs =null;
 	ResultSetMetaData rsmd = null;
@@ -54,7 +54,7 @@ public class InfoDao {
 		}
 	}
 	
-	public void prepareBatch(HashMap<String, Object> info,String tableName){
+	public void prepareBatch(HashMap<String, Object> info,String tableName,int pstmCount){
 		
 		//插入信息
 		try {			
@@ -82,8 +82,12 @@ public class InfoDao {
 				}
 				i++;
 			}
-			
-			pstm = con.prepareStatement(sql_cols + sql_values);	
+
+			for (int j=0 ;j<pstmCount; j++){
+				PreparedStatement pstm = con.prepareStatement(sql_cols + sql_values);
+				pstmMap.put("pstm"+ j ,pstm);
+			}
+
 			
 		} catch (SQLException e) {
 			// TODO Auto-generated catch block
@@ -91,11 +95,12 @@ public class InfoDao {
 		}
 	}
 	
-	public void addInfoToBatch(HashMap<String, Object> info,String tableName){
+	public void addInfoToBatch(HashMap<String, Object> info,String tableName, String pstmIndex){
 		
 		//插入信息
 		try {			
 
+			PreparedStatement pstm = pstmMap.get(pstmIndex);
 			//遍历HashMap，获得列名称
 			int i =1;
 			Iterator iter = info.entrySet().iterator();
@@ -106,9 +111,9 @@ public class InfoDao {
 				pstm.setString(i, val.toString());
 				i++;
 			}
-			
-			
-			
+
+
+
 			pstm.addBatch();
 
 		} catch (SQLException e) {
@@ -117,16 +122,10 @@ public class InfoDao {
 		}
 	}
 
-	public void addInfo(HashMap<String, Object> info,String tableName){
-
-		//插入信息
-		prepareBatch(info, tableName);
-		addInfoToBatch(info, tableName);
-		executeBatch();
-	}
 	
-	public void executeBatch(){
+	public void executeBatch(String pstmIndex){
 		try {
+			PreparedStatement pstm = pstmMap.get(pstmIndex);
 			pstm.executeBatch();
 			
 		} catch (SQLException e) {

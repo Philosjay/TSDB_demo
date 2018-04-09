@@ -12,10 +12,12 @@ import java.util.*;
 import java.util.logging.Logger;
 
 public class  DBServer {
-    private static final Logger logger = Logger.getLogger(DBServer.class.getName());
+    static private final Logger logger = Logger.getLogger(DBServer.class.getName());
 
     private Server server;
-    private static DaoManager daoManager = new DaoManager();
+
+
+
 
     private void start() throws IOException {
         /* The port on which the server should run */
@@ -62,7 +64,21 @@ public class  DBServer {
         server.blockUntilShutdown();
     }
 
+
+
+
+
+
+
+
+
+
     static class DaoImpl extends DBServiceGrpc.DBServiceImplBase {
+
+        private int infoCount=1;
+        long startTime;
+        private  DaoManager daoManager = new DaoManager();
+
 
         private void putMapListIntoResponse(List<HashMap<String ,Object>> mapList, TableResponse.Builder builder){
 
@@ -103,7 +119,8 @@ public class  DBServer {
             if(daoManager.getDao(tableName) == null){
                 InfoDao dao = new InfoDao();
                 dao.prepareConnection();
-                dao.prepareBatch(info,tableName);
+                //默认准备2个 PreparedStatement
+                dao.prepareBatch(info,tableName,2);
 
                 /** 一个table 对应一个Dao, 也就拥有了一个专属的Connection **/
                 daoManager.claimDao(tableName, dao);
@@ -137,8 +154,7 @@ public class  DBServer {
         }
 
 
-        private int infoCount=1;
-        long startTime;
+
         @Override
         public void recordInfo(InfoRequest req, StreamObserver<TableResponse> responseObserver){
             /** 录入信息时, 调出该table 专属的Dao **/
@@ -146,7 +162,7 @@ public class  DBServer {
             InfoDao dao = daoManager.getDao(tableName);
             HashMap<String,Object> info = new HashMap<String, Object>(req.getColumnInfoMap());
 
-            dao.addInfoToBatch(info,tableName);
+            dao.addInfoToBatch(info,tableName,req.getPstmIndex());
 
             if(infoCount ==1 ){
                 startTime=System.currentTimeMillis();//记录开始时间
@@ -161,7 +177,7 @@ public class  DBServer {
                 float excTime=(float)(endTime-startTime)/1000;
                 System.out.println(excTime);
 
-                dao.executeBatch();
+                dao.executeBatch(req.getPstmIndex());
 
                 TableResponse reply = TableResponse.newBuilder().setIsExist(true).build();
                 responseObserver.onNext(reply);
@@ -183,42 +199,39 @@ public class  DBServer {
 
         @Override
         public StreamObserver<InfoRequest> recordInfoByStream(final StreamObserver<TableResponse> responseObserver) {
+
             return new StreamObserver<InfoRequest>() {
 
                 @Override
                 public void onNext(InfoRequest req) {
-                    /** 录入信息时, 调出该table 专属的Dao **/
-                    String tableName = TableNameModifier.generateTableName(req.getColumnInfoMap().get("type"),req.getUserName());
-                    InfoDao dao = daoManager.getDao(tableName);
-                    HashMap<String,Object> info = new HashMap<String, Object>(req.getColumnInfoMap());
-
-                    dao.addInfoToBatch(info,tableName);
-
                     if(infoCount ==1 ){
                         startTime=System.currentTimeMillis();//记录开始时间
                     }
 
+                    String tableName = TableNameModifier.generateTableName(req.getColumnInfoMap().get("type"),req.getUserName());
+                    HashMap<String,Object> info = new HashMap<String, Object>(req.getColumnInfoMap());
 
-                    if (infoCount >= 200000){
+                    daoManager.addInfoToBatch(info,tableName);
 
-
-
-                        dao.executeBatch();
-
-                        long endTime=System.currentTimeMillis();//记录结束时间
-                        float excTime=(float)(endTime-startTime)/1000;
-                        System.out.println(excTime);
-
-
-                    }else {
-                        logger.info("recorded info for : " + infoCount + "th" );
+                    if (req.getIsFinal()){
+                        Long endTime = System.currentTimeMillis();
+                        System.out.println((endTime - startTime)/1000);
                     }
+
+
+                    daoManager.requireBatchExcecution(tableName,req.getIsFinal());
+
+
+                    if (req.getIsFinal()){
+                        Long endTime = System.currentTimeMillis();
+                        System.out.println((endTime - startTime)/1000);
+                    }
+
+                    logger.info("recorded info for : " + req.getColumnInfoMap().get("userUseRate") + "th" );
 
 
 
                     infoCount++;
-
-
                 }
 
                 @Override
@@ -231,7 +244,9 @@ public class  DBServer {
                     responseObserver.onNext(TableResponse.newBuilder().build());
                     responseObserver.onCompleted();
                 }
+
             };
+
         }
 
 

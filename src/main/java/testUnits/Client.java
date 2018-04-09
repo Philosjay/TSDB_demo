@@ -20,7 +20,7 @@ import java.util.logging.Level;
 import java.util.logging.Logger;
 
 public class Client implements Runnable{
-    private final int MAXINFO = 200010;
+    private final int MAXINFO = 400000 ;
 
     /** 远程链接准备项 **/
     private final Logger logger = Logger.getLogger(Client.class.getName());
@@ -29,7 +29,6 @@ public class Client implements Runnable{
     private  String userName;
     private final DBServiceGrpc.DBServiceStub asyncStub;//非阻塞,异步存根
 
-    private static float runtime = 0;
 
     /** 本地监控数据采集准备项 **/
     public   final List<InfoCollector> infoCollectors = new ArrayList<InfoCollector>();
@@ -61,8 +60,6 @@ public class Client implements Runnable{
         /** 完成登录客户端 **/
         try {
 
-
-
             /** 初始化，加载监控信息采集器 **/
             mountInfoCollectors(new CpuInfoCollector());
             //           client.mountInfoCollectors(new DiskInfoCollector());
@@ -70,69 +67,13 @@ public class Client implements Runnable{
             syncRemoteDB();
 
 
-
-
-            List<HashMap<String,Object>> infoList = new ArrayList<>();
-            for(int i = 0; i < infoCollectors.size(); i++){
-                InfoCollector collector =  infoCollectors.get(i);
-                int mapListSize = collector.getInfoHashList().size();
-
-                for (int j = 0; j < mapListSize; j ++){
-                    HashMap<String,Object> map = collector.filterInfo(collector.getInfoHashList().get(j));
-
-                    infoList.add(map);
-                }
-            }
-
-            long startTime=System.currentTimeMillis();//记录开始时间
-/*
-            while (true){
-                if (recordForServerTest(infoList)){
-                    break;
-                }
-
-            }
-*/
-
-            List<InfoRequest> reqList = new ArrayList<>();
-            int count=0;
-            while (true){
-
-                for (HashMap<String,Object> map:
-                        infoList) {
-
-                    if (count == MAXINFO){
-                        break;
-                    }
-
-                    InfoRequest.Builder builder = InfoRequest.newBuilder();
-                    //更新table 的列
-
-                    putMapIntoRequest(map,builder);
-                    builder.setUserName(userName);
-                    InfoRequest request = builder.build();
-                    reqList.add(request);
-
-                    count++;
-                }
-                if (count == MAXINFO){
-                    break;
-                }
-            }
-
+            List<InfoRequest> reqList = getRequestList();
 
             try {
                 recordInfoByStream(reqList);
             } catch (InterruptedException e) {
                 e.printStackTrace();
             }
-
-
-            long endTime=System.currentTimeMillis();//记录结束时间
-            float excTime=(float)(endTime-startTime)/1000;
-            runtime += excTime;
-            System.out.println(userName + " done: " + excTime);
-            System.out.println("runtime: " + runtime);
 
 
         } finally {
@@ -142,10 +83,6 @@ public class Client implements Runnable{
                 e.printStackTrace();
             }
         }
-
-
-
-
     }
 
 
@@ -345,6 +282,59 @@ public class Client implements Runnable{
         return isEnd;
     }
 
+    private List<InfoRequest> getRequestList(){
+
+        List<HashMap<String,Object>> infoList = new ArrayList<>();
+        for(int i = 0; i < infoCollectors.size(); i++){
+            InfoCollector collector =  infoCollectors.get(i);
+            int mapListSize = collector.getInfoHashList().size();
+
+            for (int j = 0; j < mapListSize; j ++){
+                HashMap<String,Object> map = collector.filterInfo(collector.getInfoHashList().get(j));
+
+                infoList.add(map);
+            }
+        }
+
+        long startTime=System.currentTimeMillis();//记录开始时间
+
+        List<InfoRequest> reqList = new ArrayList<>();
+
+        int count=0;
+        while (true){
+
+            for (HashMap<String,Object> map:
+                    infoList) {
+
+                if (count == MAXINFO){
+                    break;
+                }
+
+                InfoRequest.Builder builder = InfoRequest.newBuilder();
+                //更新table 的列
+
+
+                builder.setUserName(userName);
+                map.replace("userUseRate",count + 1);
+                putMapIntoRequest(map,builder);
+                builder.setMesg(count + "");
+
+                if (count == MAXINFO - 1){
+                    builder.setIsFinal(true);
+                }
+
+                InfoRequest request = builder.build();
+                reqList.add(request);
+
+                count++;
+            }
+            if (count == MAXINFO){
+                break;
+            }
+        }
+        return reqList;
+    }
+
     public void recordInfoByStream(List<InfoRequest> infoList) throws InterruptedException {
         logger.info("*** RecordRoute");
         final CountDownLatch finishLatch = new CountDownLatch(1);
@@ -368,13 +358,15 @@ public class Client implements Runnable{
             }
         };
 
+
         StreamObserver<InfoRequest> requestObserver = asyncStub.recordInfoByStream(responseObserver);
+
         try {
             for (int i = 0; i < MAXINFO; ++i) {
 
-
                 requestObserver.onNext(infoList.get(i));
-                // Sleep for a bit before sending the next one.
+
+
                 if (finishLatch.getCount() == 0) {
                     // RPC completed or errored before we finished sending.
                     // Sending further requests won't error, but they will just be thrown away.

@@ -48,6 +48,9 @@ message InfoRequest{
     string userName = 1;
     map<string,string> columnInfo =2;
     string devName = 3;
+    string mesg = 4;
+    string pstmIndex = 5;
+    bool isFinal = 6;
 }
 
 message InfoMap{
