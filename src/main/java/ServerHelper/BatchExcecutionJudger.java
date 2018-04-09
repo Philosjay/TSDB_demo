@@ -4,10 +4,14 @@ public class BatchExcecutionJudger {
     private long insertsCount;
     private String currentPstmIndex;
     private final long INSERTS_PER_BATCH;
+    private final int PSTM_PER_TABLE = 5;
     boolean isFinalBatch;
+    int pstmIndex;
+
 
     BatchExcecutionJudger(){
         insertsCount = 0;
+        pstmIndex = 0;
         currentPstmIndex = "pstm0";
         isFinalBatch = false;
         INSERTS_PER_BATCH = 200000;
@@ -35,10 +39,10 @@ public class BatchExcecutionJudger {
     }
 
     public void switchPstmIndex(){
-        if (currentPstmIndex == "pstm0"){
-            currentPstmIndex = "pstm1";
-        }else {
-            currentPstmIndex = "pstm0";
-        }
+
+        pstmIndex++;
+        pstmIndex = pstmIndex % (PSTM_PER_TABLE);
+
+        currentPstmIndex = "pstm" + pstmIndex;
     }
 }

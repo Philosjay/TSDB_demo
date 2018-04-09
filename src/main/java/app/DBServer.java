@@ -78,7 +78,7 @@ public class  DBServer {
         private int infoCount=1;
         long startTime;
         private  DaoManager daoManager = new DaoManager();
-
+        private final int PSTM_PER_TABLE = 5;
 
         private void putMapListIntoResponse(List<HashMap<String ,Object>> mapList, TableResponse.Builder builder){
 
@@ -120,7 +120,7 @@ public class  DBServer {
                 InfoDao dao = new InfoDao();
                 dao.prepareConnection();
                 //默认准备2个 PreparedStatement
-                dao.prepareBatch(info,tableName,2);
+                dao.prepareBatch(info,tableName,PSTM_PER_TABLE);
 
                 /** 一个table 对应一个Dao, 也就拥有了一个专属的Connection **/
                 daoManager.claimDao(tableName, dao);
@@ -155,47 +155,47 @@ public class  DBServer {
 
 
 
-        @Override
-        public void recordInfo(InfoRequest req, StreamObserver<TableResponse> responseObserver){
-            /** 录入信息时, 调出该table 专属的Dao **/
-            String tableName = TableNameModifier.generateTableName(req.getColumnInfoMap().get("type"),req.getUserName());
-            InfoDao dao = daoManager.getDao(tableName);
-            HashMap<String,Object> info = new HashMap<String, Object>(req.getColumnInfoMap());
-
-            dao.addInfoToBatch(info,tableName,req.getPstmIndex());
-
-            if(infoCount ==1 ){
-                startTime=System.currentTimeMillis();//记录开始时间
-            }
-
-
-
-
-            if (infoCount > 200000){
-
-                long endTime=System.currentTimeMillis();//记录结束时间
-                float excTime=(float)(endTime-startTime)/1000;
-                System.out.println(excTime);
-
-                dao.executeBatch(req.getPstmIndex());
-
-                TableResponse reply = TableResponse.newBuilder().setIsExist(true).build();
-                responseObserver.onNext(reply);
-                responseObserver.onCompleted();
-
-
-
-            }else {
-                TableResponse reply = TableResponse.newBuilder().setIsExist(false).build();
-                responseObserver.onNext(reply);
-                responseObserver.onCompleted();
-                logger.info("recorded info for : " + infoCount + "th" );
-            }
-
-
-
-            infoCount++;
-        }
+//        @Override
+//        public void recordInfo(InfoRequest req, StreamObserver<TableResponse> responseObserver){
+//            /** 录入信息时, 调出该table 专属的Dao **/
+//            String tableName = TableNameModifier.generateTableName(req.getColumnInfoMap().get("type"),req.getUserName());
+//            InfoDao dao = daoManager.getDao(tableName);
+//            HashMap<String,Object> info = new HashMap<String, Object>(req.getColumnInfoMap());
+//
+//            dao.addInfoToBatch(info,tableName,req.getPstmIndex());
+//
+//            if(infoCount ==1 ){
+//                startTime=System.currentTimeMillis();//记录开始时间
+//            }
+//
+//
+//
+//
+//            if (infoCount > 200000){
+//
+//                long endTime=System.currentTimeMillis();//记录结束时间
+//                float excTime=(float)(endTime-startTime)/1000;
+//                System.out.println(excTime);
+//
+//                dao.executeBatch(req.getPstmIndex());
+//
+//                TableResponse reply = TableResponse.newBuilder().setIsExist(true).build();
+//                responseObserver.onNext(reply);
+//                responseObserver.onCompleted();
+//
+//
+//
+//            }else {
+//                TableResponse reply = TableResponse.newBuilder().setIsExist(false).build();
+//                responseObserver.onNext(reply);
+//                responseObserver.onCompleted();
+//                logger.info("recorded info for : " + infoCount + "th" );
+//            }
+//
+//
+//
+//            infoCount++;
+//        }
 
         @Override
         public StreamObserver<InfoRequest> recordInfoByStream(final StreamObserver<TableResponse> responseObserver) {
@@ -215,7 +215,7 @@ public class  DBServer {
 
                     if (req.getIsFinal()){
                         Long endTime = System.currentTimeMillis();
-                        System.out.println((endTime - startTime)/1000);
+                        System.out.println((float)(endTime - startTime)/1000);
                     }
 
 
@@ -224,10 +224,10 @@ public class  DBServer {
 
                     if (req.getIsFinal()){
                         Long endTime = System.currentTimeMillis();
-                        System.out.println((endTime - startTime)/1000);
+                        System.out.println((float)(endTime - startTime)/1000);
                     }
 
-                    logger.info("recorded info for : " + req.getColumnInfoMap().get("userUseRate") + "th" );
+  //                  logger.info("recorded info for : " + req.getColumnInfoMap().get("userUseRate") + "th" );
 
 
 

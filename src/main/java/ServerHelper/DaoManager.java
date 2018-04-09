@@ -7,8 +7,6 @@ import java.util.HashMap;
 public class DaoManager {
     private HashMap<String, InfoDao> daoHashMap = new HashMap<String, InfoDao>();
     private HashMap<String, BatchExcecutionJudger> batchExcecutionJudgerMap= new HashMap<>();
-    long startTime = 0; //程序开始记录时间。。
-
 
     public void claimDao(String tableName, InfoDao dao){
 
@@ -20,17 +18,17 @@ public class DaoManager {
         return daoHashMap.get(tableName);
     }
 
-
+    int count =0;
     public void addInfoToBatch(HashMap<String,Object> info, String tableName){
-        if (startTime == 0){
-            startTime = System.currentTimeMillis();
-        }
 
         InfoDao dao = getDao(tableName);
 
         BatchExcecutionJudger batchManager = batchExcecutionJudgerMap.get(tableName);
         dao.addInfoToBatch(info,tableName,batchManager.getCurrentPstmIndex());
         batchManager.countInsert();
+
+
+
     }
 
     public void requireBatchExcecution(String tableName, boolean isFinal){
@@ -41,6 +39,7 @@ public class DaoManager {
             Thread thrd = new Thread(new ThreadForBatch(daoHashMap.get(tableName),batchManager.getCurrentPstmIndex()));
             thrd.start();
 
+
             if (isFinal){
                 try {
                     thrd.join();
@@ -50,7 +49,7 @@ public class DaoManager {
             }
 
 
-            //提交后切换 Pstm
+            //提交后切换 pstm
             batchManager.switchPstmIndex();
         }
     }

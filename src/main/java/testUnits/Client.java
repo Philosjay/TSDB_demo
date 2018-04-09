@@ -20,7 +20,8 @@ import java.util.logging.Level;
 import java.util.logging.Logger;
 
 public class Client implements Runnable{
-    private final int MAXINFO = 400000 ;
+    private final int MAXINFO = 800000 ;
+
 
     /** 远程链接准备项 **/
     private final Logger logger = Logger.getLogger(Client.class.getName());
@@ -70,7 +71,10 @@ public class Client implements Runnable{
             List<InfoRequest> reqList = getRequestList();
 
             try {
+                long start = System.currentTimeMillis();
                 recordInfoByStream(reqList);
+                long end = System.currentTimeMillis();
+                System.out.println((float)(end - start)/1000);
             } catch (InterruptedException e) {
                 e.printStackTrace();
             }
@@ -291,7 +295,6 @@ public class Client implements Runnable{
 
             for (int j = 0; j < mapListSize; j ++){
                 HashMap<String,Object> map = collector.filterInfo(collector.getInfoHashList().get(j));
-
                 infoList.add(map);
             }
         }
@@ -361,8 +364,18 @@ public class Client implements Runnable{
 
         StreamObserver<InfoRequest> requestObserver = asyncStub.recordInfoByStream(responseObserver);
 
+
         try {
+            long start = System.currentTimeMillis();
             for (int i = 0; i < MAXINFO; ++i) {
+
+                if (i%200000 == 0){
+                    long end = System.currentTimeMillis();
+
+                    logger.info( i +"th" + (float)(end-start)/1000);
+
+                    start = System.currentTimeMillis();
+                }
 
                 requestObserver.onNext(infoList.get(i));
 
@@ -389,7 +402,4 @@ public class Client implements Runnable{
      * Greet server. If provided, the first element of {@code args} is the name to use in the
      * greeting.
      */
-
-
-
 }
