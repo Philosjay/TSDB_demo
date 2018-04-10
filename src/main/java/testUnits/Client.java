@@ -2,6 +2,7 @@ package testUnits;
 
 import ClientHelpers.CpuInfoCollector;
 import ClientHelpers.InfoCollector;
+import ClientHelpers.ResponseStreamObserverImpl;
 import io.grpc.ManagedChannel;
 import io.grpc.ManagedChannelBuilder;
 import io.grpc.Status;
@@ -11,7 +12,6 @@ import io.grpc.dao.InfoRequest;
 import io.grpc.dao.SQLRequest;
 import io.grpc.dao.TableResponse;
 import io.grpc.stub.StreamObserver;
-import javafx.scene.control.Tab;
 
 import java.util.*;
 import java.util.concurrent.CountDownLatch;
@@ -20,7 +20,7 @@ import java.util.logging.Level;
 import java.util.logging.Logger;
 
 public class Client implements Runnable{
-    private final int MAXINFO = 800000 ;
+    private final int MAXINFO = 10000 ;
 
 
     /** 远程链接准备项 **/
@@ -70,14 +70,20 @@ public class Client implements Runnable{
 
             List<InfoRequest> reqList = getRequestList();
 
-            try {
-                long start = System.currentTimeMillis();
-                recordInfoByStream(reqList);
-                long end = System.currentTimeMillis();
-                System.out.println((float)(end - start)/1000);
-            } catch (InterruptedException e) {
-                e.printStackTrace();
-            }
+//            for (int i=0;i<reqList.size();i++){
+                try {
+                    long start = System.currentTimeMillis();
+                    for (int i=0;i<60;i++){
+                        recordInfoByStream_chat(reqList);
+                    }
+                    long end = System.currentTimeMillis();
+                    System.out.println((float)(end - start)/1000);
+                } catch (Exception e) {
+                    e.printStackTrace();
+                }
+//            }
+
+
 
 
         } finally {
@@ -289,6 +295,7 @@ public class Client implements Runnable{
     private List<InfoRequest> getRequestList(){
 
         List<HashMap<String,Object>> infoList = new ArrayList<>();
+
         for(int i = 0; i < infoCollectors.size(); i++){
             InfoCollector collector =  infoCollectors.get(i);
             int mapListSize = collector.getInfoHashList().size();
@@ -298,8 +305,6 @@ public class Client implements Runnable{
                 infoList.add(map);
             }
         }
-
-        long startTime=System.currentTimeMillis();//记录开始时间
 
         List<InfoRequest> reqList = new ArrayList<>();
 
@@ -313,6 +318,7 @@ public class Client implements Runnable{
                     break;
                 }
 
+
                 InfoRequest.Builder builder = InfoRequest.newBuilder();
                 //更新table 的列
 
@@ -323,6 +329,7 @@ public class Client implements Runnable{
                 builder.setMesg(count + "");
 
                 if (count == MAXINFO - 1){
+                    // 消息结尾
                     builder.setIsFinal(true);
                 }
 
@@ -338,6 +345,67 @@ public class Client implements Runnable{
         return reqList;
     }
 
+    private List<List<InfoRequest>> getRequestPacketList(){
+
+        List<HashMap<String,Object>> infoList = new ArrayList<>();
+        List<List<InfoRequest>> reqPacketList = new ArrayList<>();
+        for(int i = 0; i < infoCollectors.size(); i++){
+            InfoCollector collector =  infoCollectors.get(i);
+            int mapListSize = collector.getInfoHashList().size();
+
+            for (int j = 0; j < mapListSize; j ++){
+                HashMap<String,Object> map = collector.filterInfo(collector.getInfoHashList().get(j));
+                infoList.add(map);
+            }
+        }
+
+        List<InfoRequest> reqList = new ArrayList<>();
+
+        int count=0;
+        while (true){
+
+            for (HashMap<String,Object> map:
+                    infoList) {
+
+                if (count == MAXINFO){
+                    break;
+                }
+
+                if (count%400000==0 && count>0){
+                    //每200000 分为一个packet
+                    reqPacketList.add(reqList);
+                    reqList = new ArrayList<>();
+                }
+
+                InfoRequest.Builder builder = InfoRequest.newBuilder();
+                //更新table 的列
+
+
+                builder.setUserName(userName);
+                map.replace("userUseRate",count + 1);
+                putMapIntoRequest(map,builder);
+                builder.setMesg(count + "");
+
+                if (count == MAXINFO - 1){
+                    // 消息结尾
+                    builder.setIsFinal(true);
+                    InfoRequest request = builder.build();
+                    reqList.add(request);
+                    reqPacketList.add(reqList);
+                }
+
+                InfoRequest request = builder.build();
+                reqList.add(request);
+
+                count++;
+            }
+            if (count == MAXINFO){
+                break;
+            }
+        }
+        return reqPacketList;
+    }
+
     public void recordInfoByStream(List<InfoRequest> infoList) throws InterruptedException {
         logger.info("*** RecordRoute");
         final CountDownLatch finishLatch = new CountDownLatch(1);
@@ -351,41 +419,39 @@ public class Client implements Runnable{
             @Override
             public void onError(Throwable t) {
                 Status status = Status.fromThrowable(t);
-                logger.info("RecordRoute Failed: {0}");
+                logger.info("RecordRoute 1 Failed: {0}" + status.toString());
             }
 
             @Override
             public void onCompleted() {
-                logger.info("Finished RecordRoute");
+                logger.info("Finished RecordRoute 1");
                 finishLatch.countDown();
             }
         };
 
-
         StreamObserver<InfoRequest> requestObserver = asyncStub.recordInfoByStream(responseObserver);
-
 
         try {
             long start = System.currentTimeMillis();
-            for (int i = 0; i < MAXINFO; ++i) {
+            for (int i = 0; i < infoList.size(); ++i) {
 
-                if (i%200000 == 0){
+                requestObserver.onNext(infoList.get(i));
+
+                if (i%(200000) == 200000-1 ){
                     long end = System.currentTimeMillis();
-
-                    logger.info( i +"th" + (float)(end-start)/1000);
+                    System.out.println(i +"th          " + (float)(end-start)/1000);
 
                     start = System.currentTimeMillis();
                 }
 
-                requestObserver.onNext(infoList.get(i));
-
-
                 if (finishLatch.getCount() == 0) {
                     // RPC completed or errored before we finished sending.
                     // Sending further requests won't error, but they will just be thrown away.
+                    System.out.println("countDown is ZERO");
                     return;
                 }
             }
+
         } catch (RuntimeException e) {
             // Cancel RPC
             requestObserver.onError(e);
@@ -398,8 +464,38 @@ public class Client implements Runnable{
         finishLatch.await(1, TimeUnit.MINUTES);
     }
 
-    /**
-     * Greet server. If provided, the first element of {@code args} is the name to use in the
-     * greeting.
-     */
+    public void recordInfoByStream_chat(List<InfoRequest> infoList){
+//        logger.info("*** RecordRoute");
+        final CountDownLatch finishLatch = new CountDownLatch(1);
+
+
+        ResponseStreamObserverImpl responseStreamObserver = new ResponseStreamObserverImpl(finishLatch);
+        //写入监听
+        StreamObserver<InfoRequest> requestObserver = asyncStub.recordInfoByStreamChat(responseStreamObserver);
+                //写回监听
+
+        int count =0;
+
+        try {
+            for (int i=0;i<infoList.size();i++){
+//                if (count == 200000 ){
+//                    if (responseStreamObserver.toContinue()){
+//                        count =0;
+//                        continue;
+//                    }
+//                }
+                requestObserver.onNext(infoList.get(i));
+
+                count++;
+            }
+
+
+        } catch (RuntimeException e) {
+            requestObserver.onError(e);
+            throw e;
+        } //标识写完
+
+        requestObserver.onCompleted();
+    }
+
 }

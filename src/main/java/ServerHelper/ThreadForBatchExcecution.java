@@ -2,11 +2,11 @@ package ServerHelper;
 
 import dao.InfoDao;
 
-public class ThreadForBatch implements Runnable {
+public class ThreadForBatchExcecution implements Runnable {
     private InfoDao dao ;
     String pstmIndex;
 
-    public ThreadForBatch(InfoDao dao, String pstmIndex){
+    public ThreadForBatchExcecution(InfoDao dao, String pstmIndex){
         this.dao = dao;
         this.pstmIndex = pstmIndex;
     }

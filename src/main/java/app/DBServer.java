@@ -1,6 +1,7 @@
 package app;
 
 import ServerHelper.DaoManager;
+import ServerHelper.InfoReceiver;
 import ServerHelper.TableNameModifier;
 import dao.InfoDao;
 import io.grpc.Server;
@@ -197,8 +198,56 @@ public class  DBServer {
 //            infoCount++;
 //        }
 
+        InfoReceiver rcv = new InfoReceiver(daoManager);
+
         @Override
-        public StreamObserver<InfoRequest> recordInfoByStream(final StreamObserver<TableResponse> responseObserver) {
+        public  StreamObserver<InfoRequest> recordInfoByStreamChat(final StreamObserver<TableResponse> responseObserver) {
+
+            return new StreamObserver<InfoRequest>() {
+
+                @Override
+                public void onNext(InfoRequest req) {
+                    if(infoCount ==1 ){
+                        startTime=System.currentTimeMillis();//记录开始时间
+                    }
+
+
+                    String tableName = TableNameModifier.generateTableName(req.getColumnInfoMap().get("type"),req.getUserName());
+                    HashMap<String,Object> info = new HashMap<String, Object>(req.getColumnInfoMap());
+
+                    int count = daoManager.addInfoANDRequireBatchExcecution(info,tableName);
+                    if (count%200000 ==0){
+                        long end = System.currentTimeMillis();
+                        System.out.println(count + "th     "  + tableName + "    " + (float)(end-startTime)/1000);
+                        startTime = System.currentTimeMillis();
+
+                        TableResponse response = TableResponse.newBuilder().setMesg("recording " + count + "th" ).build();
+
+                        responseObserver.onNext(response);
+                    }
+
+
+                    infoCount++;
+                }
+
+
+                @Override
+                synchronized public void onError(Throwable t) {
+                    logger.info("Encountered error in recordInfoByStream");
+                }
+
+                @Override
+                synchronized public void onCompleted() {
+                    responseObserver.onNext(TableResponse.newBuilder().build());
+                    responseObserver.onCompleted();
+                }
+
+            };
+
+        }
+
+        @Override
+        public  StreamObserver<InfoRequest> recordInfoByStream(final StreamObserver<TableResponse> responseObserver) {
 
             return new StreamObserver<InfoRequest>() {
 
@@ -211,44 +260,29 @@ public class  DBServer {
                     String tableName = TableNameModifier.generateTableName(req.getColumnInfoMap().get("type"),req.getUserName());
                     HashMap<String,Object> info = new HashMap<String, Object>(req.getColumnInfoMap());
 
-                    daoManager.addInfoToBatch(info,tableName);
+                    int count = daoManager.addInfoANDRequireBatchExcecution(info,tableName);
+                    if (count%200000 ==0){
+                        long end = System.currentTimeMillis();
+                        System.out.println(count + "th     "  + tableName + "    " + (float)(end-startTime)/1000);
+                        startTime = System.currentTimeMillis();
 
-                    if (req.getIsFinal()){
-                        Long endTime = System.currentTimeMillis();
-                        System.out.println((float)(endTime - startTime)/1000);
                     }
-
-
-                    daoManager.requireBatchExcecution(tableName,req.getIsFinal());
-
-
-                    if (req.getIsFinal()){
-                        Long endTime = System.currentTimeMillis();
-                        System.out.println((float)(endTime - startTime)/1000);
-                    }
-
-  //                  logger.info("recorded info for : " + req.getColumnInfoMap().get("userUseRate") + "th" );
-
-
 
                     infoCount++;
                 }
 
                 @Override
-                public void onError(Throwable t) {
+                synchronized public void onError(Throwable t) {
                     logger.info("Encountered error in recordInfoByStream");
                 }
 
                 @Override
-                public void onCompleted() {
+                synchronized public void onCompleted() {
                     responseObserver.onNext(TableResponse.newBuilder().build());
                     responseObserver.onCompleted();
                 }
-
             };
-
         }
-
 
 
         @Override

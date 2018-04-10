@@ -29,6 +29,7 @@ service DBService {
   rpc updateTables(InfoRequest) returns (TableResponse) {}
   rpc recordInfo (InfoRequest) returns (TableResponse) {}
   rpc recordInfoByStream (stream InfoRequest) returns (TableResponse) {}
+  rpc recordInfoByStream_chat (stream InfoRequest) returns (stream TableResponse) {}
   rpc findInfo (InfoRequest) returns (TableResponse) {}
   rpc executeSQLForUpdate (SQLRequest) returns (TableResponse) {}
   rpc executeSQLForQuery (SQLRequest) returns (TableResponse) {}

@@ -7,6 +7,7 @@ public class BatchExcecutionJudger {
     private final int PSTM_PER_TABLE = 5;
     boolean isFinalBatch;
     int pstmIndex;
+    public int count=0;
 
 
     BatchExcecutionJudger(){
@@ -18,6 +19,7 @@ public class BatchExcecutionJudger {
     }
 
     public void countInsert(){
+        count++;
         insertsCount++;
     }
 
