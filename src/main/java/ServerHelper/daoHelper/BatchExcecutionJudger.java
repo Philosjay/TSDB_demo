@@ -18,7 +18,7 @@ public class BatchExcecutionJudger {
 
 
         // 这两个参数的大小配合很重要，否则导致pstm 繁忙，信息丢失！
-        INSERTS_PER_BATCH = 100000;
+        INSERTS_PER_BATCH = 200000;
         PSTM_PER_TABLE = pstmCount;
     }
 

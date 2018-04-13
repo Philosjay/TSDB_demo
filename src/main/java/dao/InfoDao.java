@@ -7,7 +7,7 @@ import java.util.Map.Entry;
 import utils.JdbcUtils;
 
 public class InfoDao {
-	Connection con = null;
+	Connection[] con = null;
 	PreparedStatement[] pstmArray = null;
 	Statement stm = null;
 	ResultSet rs =null;
@@ -38,7 +38,12 @@ public class InfoDao {
 
 	public void prepareConnection(){
 		try {
-			con = JdbcUtils.getConnection();
+//			con = JdbcUtils.getConnection();
+
+			con = new Connection[8];
+			for (int i=0;i<8;i++){
+				con[i] = JdbcUtils.getConnection();
+			}
 
 		} catch (Exception e) {
 			e.printStackTrace();
@@ -86,7 +91,8 @@ public class InfoDao {
 
 			pstmArray = new PreparedStatement[pstmCount];
 			for (int j=0 ;j<pstmCount; j++){
-				PreparedStatement pstm = con.prepareStatement(sql_cols + sql_values);
+//				PreparedStatement pstm = con.prepareStatement(sql_cols + sql_values);
+				PreparedStatement pstm = con[j].prepareStatement(sql_cols + sql_values);
 				pstmArray[j] = pstm;
 			}
 
@@ -143,7 +149,7 @@ public class InfoDao {
 		try{
 			String sql = "SELECT COUNT(0) FROM information_schema.tables WHERE table_name = '" + tableName + "'";
 			
-			stm = con.createStatement();
+			stm = con[0].createStatement();
 			rs = stm.executeQuery(sql);
 			boolean isExist= false;
 			while(rs.next()){
@@ -174,7 +180,7 @@ public class InfoDao {
 					+ 	"time TIMESTAMP, "
 					+ "type varchar(50) "
 					+ ")";
-			stm = con.createStatement();
+			stm = con[0].createStatement();
 			stm.executeUpdate(sql);
 			
 		}catch(Exception e){
@@ -196,7 +202,7 @@ public class InfoDao {
 	public boolean isColExist(String colName,String tableName){
 		try{		
 			
-			stm = con.createStatement();
+			stm = con[0].createStatement();
 			
 			String sql =  "select COUNT(0) from information_schema.columns WHERE table_name = '"+ tableName +  
 					"' AND column_name = '" + colName + "'";
@@ -230,7 +236,7 @@ public class InfoDao {
 	public void addColumn(String colName,String tableName){
 		
 		try{						
-			stm = con.createStatement();
+			stm = con[0].createStatement();
 
 			String sql = "ALTER TABLE " + tableName +" ADD column " +  colName + " double";
 			stm.executeUpdate(sql);
@@ -253,7 +259,7 @@ public class InfoDao {
 	public List<HashMap<String,Object>> findInfo(String tableName, HashMap<String,Object> infoMap){
 		try{
 
-			stm = con.createStatement();
+			stm = con[0].createStatement();
 
 			String sql =  "select * from " + tableName ;
 			rs = stm.executeQuery(sql);
@@ -279,7 +285,7 @@ public class InfoDao {
 
 	public void executeUpdate(String sql){
 		try{
-			stm = con.createStatement();
+			stm = con[0].createStatement();
 			stm.executeUpdate(sql);
 
 		}catch(Exception e){
@@ -298,7 +304,7 @@ public class InfoDao {
 
     public List<HashMap<String,Object>> executeQuery(String sql){
         try{
-            stm = con.createStatement();
+            stm = con[0].createStatement();
             rs = stm.executeQuery(sql);
 
             List<HashMap<String,Object>> mapList = generateMapListFromResultSet(rs);

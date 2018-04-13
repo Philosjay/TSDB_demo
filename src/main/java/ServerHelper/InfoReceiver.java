@@ -16,6 +16,7 @@ public class InfoReceiver {
     public int infoCount = 0;
     private int infoIndex = 0;
 
+    int daoIndex;
 
     public InfoReceiver(){
 
@@ -27,7 +28,9 @@ public class InfoReceiver {
         infoArray[infoIndex] = new InfoHolder(info);
         infoCount++;
         infoIndex++;
-        releaseBuffer(distr.getDaoManager(),tableName,false);
+        daoIndex = distr.curDaoIndex;
+        releaseBuffer(distr.getDaoManager(infoCount),tableName,false);
+
 
     }
 
@@ -40,7 +43,9 @@ public class InfoReceiver {
 
     synchronized public void releaseBuffer(DaoManager mng, String tableName, boolean isFinal){
 
+        //开辟缓存信息插入pstm的线程
         if (infoIndex == BUFFERSIZE){
+//            System.out.println("curDaoMng " + daoIndex);
             Thread thrd = new Thread(new ThreadForBatchInsert(mng,infoArray,tableName,isFinal));
             thrd.start();
 

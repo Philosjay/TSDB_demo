@@ -122,7 +122,7 @@ public class  DBServer {
             if(daoManagerDistributerMap.get(tableName) == null){
                 DaoManagerDistributer distributer = new DaoManagerDistributer();
                 distributer.prepareDao(tableName,info);
-                DaoManager mng = distributer.getDaoManager();
+                DaoManager mng = distributer.getDaoManager(0);
 
 
                 /** 一个table 对应一个DaoManager, 也就拥有了多个专属的Connection **/
@@ -272,7 +272,7 @@ public class  DBServer {
                     String tableName = TableNameModifier.generateTableName(req.getColumnInfoMap().get("type"),req.getUserName());
                     HashMap<String,Object> info = new HashMap<String, Object>(req.getColumnInfoMap());
 
-                    daoManagerDistributerMap.get(tableName).getDaoManager().addInfoANDRequireBatchExcecution(info);
+//                    daoManagerDistributerMap.get(tableName).getDaoManager().addInfoANDRequireBatchExcecution(info);
 //                    int count = daoManagerDistributerMap.get(tableName).countInsert();
 //                    if (count%200000 ==0){
 //                        long end = System.currentTimeMillis();
@@ -303,7 +303,7 @@ public class  DBServer {
             logger.info("tring to find info for: " + req.getDevName());
 
             String tableName = TableNameModifier.generateTableName(req.getDevName(),req.getUserName());
-            InfoDao dao = daoManagerDistributerMap.get(tableName).getDaoManager().getDao();
+            InfoDao dao = daoManagerDistributerMap.get(tableName).getDaoManager(0).getDao();
 
             HashMap<String ,Object> infoMap = new HashMap<String ,Object>(req.getColumnInfoMap());
             List<HashMap<String ,Object>> mapList = dao.findInfo(tableName,infoMap);

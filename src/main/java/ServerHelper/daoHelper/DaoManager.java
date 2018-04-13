@@ -6,7 +6,7 @@ import java.util.HashMap;
 import java.util.Map;
 
 public class DaoManager {
-    private final int PSTM_PER_TABLE = 6;
+    private final int PSTM_PER_TABLE = 8;
 
     private InfoDao dao = null;
     private BatchExcecutionJudger batchExcecutionJudger = null;
@@ -44,21 +44,12 @@ public class DaoManager {
 
     synchronized public void requireBatchExcecution(boolean isFinal){
 
-
+        //开辟pstm批量插入DB的线程
         if (isFinal || batchExcecutionJudger.toExcBatch()){
             Thread thrd = new Thread(new ThreadForBatchExcecution(dao,batchExcecutionJudger.getCurrentPstmIndex()));
             thrd.start();
-//
-//
-//            if (isFinal){
-//                try {
-//                    thrd.join();
-//                } catch (InterruptedException e) {
-//                    e.printStackTrace();
-//                }
-//            }
 
-            //提交后切换 pstm
+            //提交后切换待命pstm
             batchExcecutionJudger.switchPstmIndex();
         }
     }

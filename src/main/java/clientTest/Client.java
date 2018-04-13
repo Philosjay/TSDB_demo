@@ -72,12 +72,16 @@ public class Client implements Runnable{
             List<InfoRequest> reqList = getRequestList();
 
             try {
-                long start = System.currentTimeMillis();
-                for (int i=0;i<MAXINFO/INFOPERCOMMIT;i++){
-                    recordInfoByStream_chat(reqList);
+                for (int j=0;j<3;j++){
+                    long start = System.currentTimeMillis();
+                    for (int i=0;i<MAXINFO/INFOPERCOMMIT;i++){
+                        recordInfoByStream_chat(reqList);
+                    }
+                    long end = System.currentTimeMillis();
+                    System.out.println((float)(end - start)/1000);
+                    Thread.sleep(4000);
                 }
-                long end = System.currentTimeMillis();
-                System.out.println((float)(end - start)/1000);
+
             } catch (Exception e) {
                 e.printStackTrace();
             }
