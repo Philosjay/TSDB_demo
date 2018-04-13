@@ -7,8 +7,8 @@ import java.util.Map.Entry;
 import utils.JdbcUtils;
 
 public class InfoDao {
-	HashMap<Integer,Connection> con = new HashMap<Integer,Connection>();
-	HashMap<String,PreparedStatement> pstmMap = new HashMap<String,PreparedStatement>();
+	Connection con = null;
+	PreparedStatement[] pstmArray = null;
 	Statement stm = null;
 	ResultSet rs =null;
 	ResultSetMetaData rsmd = null;
@@ -38,9 +38,7 @@ public class InfoDao {
 
 	public void prepareConnection(){
 		try {
-			for (int i=0;i<5;i++){
-				con.put(i,JdbcUtils.getConnection());
-			}
+			con = JdbcUtils.getConnection();
 
 		} catch (Exception e) {
 			e.printStackTrace();
@@ -86,9 +84,10 @@ public class InfoDao {
 				i++;
 			}
 
+			pstmArray = new PreparedStatement[pstmCount];
 			for (int j=0 ;j<pstmCount; j++){
-				PreparedStatement pstm = con.get(0).prepareStatement(sql_cols + sql_values);
-				pstmMap.put("pstm"+ j ,pstm);
+				PreparedStatement pstm = con.prepareStatement(sql_cols + sql_values);
+				pstmArray[j] = pstm;
 			}
 
 			
@@ -98,12 +97,12 @@ public class InfoDao {
 		}
 	}
 	
-	public void addInfoToBatch(HashMap<String, Object> info,String tableName, String pstmIndex){
+	public void addInfoToBatch(Map<String, Object> info,int pstmIndex){
 		
 		//插入信息
 		try {			
 
-			PreparedStatement pstm = pstmMap.get(pstmIndex);
+			PreparedStatement pstm = pstmArray[pstmIndex];
 			//遍历HashMap，获得列名称
 			int i =1;
 			Iterator iter = info.entrySet().iterator();
@@ -126,9 +125,9 @@ public class InfoDao {
 	}
 
 	
-	public void executeBatch(String pstmIndex){
+	public void executeBatch(int pstmIndex){
 		try {
-			PreparedStatement pstm = pstmMap.get(pstmIndex);
+			PreparedStatement pstm = pstmArray[pstmIndex];
 			pstm.executeBatch();
 			
 		} catch (SQLException e) {
@@ -144,7 +143,7 @@ public class InfoDao {
 		try{
 			String sql = "SELECT COUNT(0) FROM information_schema.tables WHERE table_name = '" + tableName + "'";
 			
-			stm = con.get(0).createStatement();
+			stm = con.createStatement();
 			rs = stm.executeQuery(sql);
 			boolean isExist= false;
 			while(rs.next()){
@@ -175,7 +174,7 @@ public class InfoDao {
 					+ 	"time TIMESTAMP, "
 					+ "type varchar(50) "
 					+ ")";
-			stm = con.get(0).createStatement();
+			stm = con.createStatement();
 			stm.executeUpdate(sql);
 			
 		}catch(Exception e){
@@ -197,7 +196,7 @@ public class InfoDao {
 	public boolean isColExist(String colName,String tableName){
 		try{		
 			
-			stm = con.get(0).createStatement();
+			stm = con.createStatement();
 			
 			String sql =  "select COUNT(0) from information_schema.columns WHERE table_name = '"+ tableName +  
 					"' AND column_name = '" + colName + "'";
@@ -231,7 +230,7 @@ public class InfoDao {
 	public void addColumn(String colName,String tableName){
 		
 		try{						
-			stm = con.get(0).createStatement();
+			stm = con.createStatement();
 
 			String sql = "ALTER TABLE " + tableName +" ADD column " +  colName + " double";
 			stm.executeUpdate(sql);
@@ -254,7 +253,7 @@ public class InfoDao {
 	public List<HashMap<String,Object>> findInfo(String tableName, HashMap<String,Object> infoMap){
 		try{
 
-			stm = con.get(0).createStatement();
+			stm = con.createStatement();
 
 			String sql =  "select * from " + tableName ;
 			rs = stm.executeQuery(sql);
@@ -280,7 +279,7 @@ public class InfoDao {
 
 	public void executeUpdate(String sql){
 		try{
-			stm = con.get(0).createStatement();
+			stm = con.createStatement();
 			stm.executeUpdate(sql);
 
 		}catch(Exception e){
@@ -299,7 +298,7 @@ public class InfoDao {
 
     public List<HashMap<String,Object>> executeQuery(String sql){
         try{
-            stm = con.get(0).createStatement();
+            stm = con.createStatement();
             rs = stm.executeQuery(sql);
 
             List<HashMap<String,Object>> mapList = generateMapListFromResultSet(rs);

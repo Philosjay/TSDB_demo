@@ -1,4 +1,4 @@
-package testUnits;
+package clientTest;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -9,7 +9,7 @@ public class ClientManager {
 
     public static void main(String[] args){
 
-        List<Thread> thrdList = new ArrayList<>();
+        List<Thread> thrdList = new ArrayList<Thread>();
 
         for (int i=1; i<=clientCount; i++){
             Thread clientThrd = new Thread(new Client("localhost", 50051,"Client" + i));
@@ -34,7 +34,7 @@ public class ClientManager {
 
         long endTime=System.currentTimeMillis();//记录结束时间
         float excTime=(float)(endTime-startTime)/1000;
-        System.out.println(excTime);
+        System.out.println("end     " + excTime);
 
 
 

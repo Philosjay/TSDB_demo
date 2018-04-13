@@ -1,12 +1,10 @@
-package ClientHelpers;
+package clientHelpers;
 
 import org.hyperic.sigar.SigarException;
 import utils.OSUtils;
 
 import java.util.HashMap;
-import java.util.Iterator;
 import java.util.List;
-import java.util.Map;
 
 public class DiskInfoCollector extends InfoCollector {
 

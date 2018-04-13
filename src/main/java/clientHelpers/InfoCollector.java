@@ -1,4 +1,4 @@
-package ClientHelpers;
+package clientHelpers;
 import java.util.HashMap;
 import java.util.List;
 

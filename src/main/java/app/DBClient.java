@@ -1,7 +1,7 @@
 package app;
 
-import ClientHelpers.CpuInfoCollector;
-import ClientHelpers.InfoCollector;
+import clientHelpers.CpuInfoCollector;
+import clientHelpers.InfoCollector;
 import io.grpc.ManagedChannel;
 import io.grpc.ManagedChannelBuilder;
 import io.grpc.StatusRuntimeException;
@@ -269,7 +269,7 @@ public class DBClient {
 
 
 
-            List<HashMap<String,Object>> infoList = new ArrayList<>();
+            List<HashMap<String,Object>> infoList = new ArrayList<HashMap<String,Object>>();
             for(int i = 0; i < infoCollectors.size(); i++){
                 InfoCollector collector =  infoCollectors.get(i);
                 int mapListSize = collector.getInfoHashList().size();

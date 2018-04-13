@@ -1,32 +1,53 @@
 package ServerHelper;
 
+import ServerHelper.daoHelper.DaoManager;
+import ServerHelper.daoHelper.DaoManagerDistributer;
+import ServerHelper.daoHelper.ThreadForBatchInsert;
+
+import java.lang.reflect.Array;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 public class InfoReceiver {
-    private List<HashMap<String,Object>> infoList = new ArrayList<HashMap<String, Object>>() ;
-    private long infoCount = 0;
-    private DaoManager daoManager = null;
+    private int BUFFERSIZE = 1000;     //根据模块测试，数组长度为1000时插入效率最高，但跟其他模块配合时这个值不一定最优
+    private  InfoHolder[] infoArray = new InfoHolder[BUFFERSIZE];
+    public int infoCount = 0;
+    private int infoIndex = 0;
 
-    public InfoReceiver(DaoManager mng){
-        daoManager = mng;
+
+    public InfoReceiver(){
+
     }
 
-    public void addInfo(HashMap<String,Object> info){
-        infoList.add(info);
+    synchronized public void receiveInfo(Map<String,Object> info, DaoManagerDistributer distr, String tableName){
+
+        // info 存入定长Array 效率更高
+        infoArray[infoIndex] = new InfoHolder(info);
         infoCount++;
+        infoIndex++;
+        releaseBuffer(distr.getDaoManager(),tableName,false);
+
     }
 
-    public void requireDaoExcecution(String tableName, boolean isFinal){
-        if (infoCount == 1000){
+    synchronized public void recForTest(Map<String,Object> info){
+        infoArray[infoIndex] = new InfoHolder(info);
+        infoCount++;
+        infoIndex++;
+        releaseBuffer(null,"",false);
+    }
 
-            Thread thrd = new Thread(new ThreadForBatchInsert(daoManager,infoList,tableName,isFinal));
+    synchronized public void releaseBuffer(DaoManager mng, String tableName, boolean isFinal){
+
+        if (infoIndex == BUFFERSIZE){
+            Thread thrd = new Thread(new ThreadForBatchInsert(mng,infoArray,tableName,isFinal));
             thrd.start();
 
-            infoList = new ArrayList<HashMap<String, Object>>() ;
-            infoCount = 0;
+            infoIndex = 0;
         }
+
+
     }
 
 }

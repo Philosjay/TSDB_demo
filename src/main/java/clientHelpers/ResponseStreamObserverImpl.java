@@ -1,4 +1,4 @@
-package ClientHelpers;
+package clientHelpers;
 
 import io.grpc.dao.TableResponse;
 import io.grpc.stub.StreamObserver;
@@ -16,7 +16,6 @@ public class ResponseStreamObserverImpl implements StreamObserver<TableResponse>
 
     @Override
     public void onNext(TableResponse note) {
-        System.out.println("服务端写回: " + note.getMesg());
         toContinue = true;
     }
 

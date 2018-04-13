@@ -1,8 +1,8 @@
-package testUnits;
+package clientTest;
 
-import ClientHelpers.CpuInfoCollector;
-import ClientHelpers.InfoCollector;
-import ClientHelpers.ResponseStreamObserverImpl;
+import clientHelpers.CpuInfoCollector;
+import clientHelpers.InfoCollector;
+import clientHelpers.ResponseStreamObserverImpl;
 import io.grpc.ManagedChannel;
 import io.grpc.ManagedChannelBuilder;
 import io.grpc.Status;
@@ -20,7 +20,8 @@ import java.util.logging.Level;
 import java.util.logging.Logger;
 
 public class Client implements Runnable{
-    private final int MAXINFO = 10000 ;
+    private final int MAXINFO = 600000 ;
+    private final int INFOPERCOMMIT = 100000;
 
 
     /** 远程链接准备项 **/
@@ -70,18 +71,16 @@ public class Client implements Runnable{
 
             List<InfoRequest> reqList = getRequestList();
 
-//            for (int i=0;i<reqList.size();i++){
-                try {
-                    long start = System.currentTimeMillis();
-                    for (int i=0;i<60;i++){
-                        recordInfoByStream_chat(reqList);
-                    }
-                    long end = System.currentTimeMillis();
-                    System.out.println((float)(end - start)/1000);
-                } catch (Exception e) {
-                    e.printStackTrace();
+            try {
+                long start = System.currentTimeMillis();
+                for (int i=0;i<MAXINFO/INFOPERCOMMIT;i++){
+                    recordInfoByStream_chat(reqList);
                 }
-//            }
+                long end = System.currentTimeMillis();
+                System.out.println((float)(end - start)/1000);
+            } catch (Exception e) {
+                e.printStackTrace();
+            }
 
 
 
@@ -294,7 +293,7 @@ public class Client implements Runnable{
 
     private List<InfoRequest> getRequestList(){
 
-        List<HashMap<String,Object>> infoList = new ArrayList<>();
+        List<HashMap<String,Object>> infoList = new ArrayList<HashMap<String,Object>>();
 
         for(int i = 0; i < infoCollectors.size(); i++){
             InfoCollector collector =  infoCollectors.get(i);
@@ -306,7 +305,7 @@ public class Client implements Runnable{
             }
         }
 
-        List<InfoRequest> reqList = new ArrayList<>();
+        List<InfoRequest> reqList = new ArrayList<InfoRequest>();
 
         int count=0;
         while (true){
@@ -314,7 +313,7 @@ public class Client implements Runnable{
             for (HashMap<String,Object> map:
                     infoList) {
 
-                if (count == MAXINFO){
+                if (count == INFOPERCOMMIT){
                     break;
                 }
 
@@ -328,17 +327,17 @@ public class Client implements Runnable{
                 putMapIntoRequest(map,builder);
                 builder.setMesg(count + "");
 
-                if (count == MAXINFO - 1){
-                    // 消息结尾
-                    builder.setIsFinal(true);
-                }
+//                if (count == MAXINFO - 1){
+//                    // 消息结尾
+//                    builder.setIsFinal(true);
+//                }
 
                 InfoRequest request = builder.build();
                 reqList.add(request);
 
                 count++;
             }
-            if (count == MAXINFO){
+            if (count == INFOPERCOMMIT){
                 break;
             }
         }
@@ -374,7 +373,7 @@ public class Client implements Runnable{
                 if (count%400000==0 && count>0){
                     //每200000 分为一个packet
                     reqPacketList.add(reqList);
-                    reqList = new ArrayList<>();
+                    reqList = new ArrayList<InfoRequest>();
                 }
 
                 InfoRequest.Builder builder = InfoRequest.newBuilder();
@@ -464,6 +463,7 @@ public class Client implements Runnable{
         finishLatch.await(1, TimeUnit.MINUTES);
     }
 
+    private int count =0;
     public void recordInfoByStream_chat(List<InfoRequest> infoList){
 //        logger.info("*** RecordRoute");
         final CountDownLatch finishLatch = new CountDownLatch(1);
@@ -473,8 +473,6 @@ public class Client implements Runnable{
         //写入监听
         StreamObserver<InfoRequest> requestObserver = asyncStub.recordInfoByStreamChat(responseStreamObserver);
                 //写回监听
-
-        int count =0;
 
         try {
             for (int i=0;i<infoList.size();i++){

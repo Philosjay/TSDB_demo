@@ -1,4 +1,4 @@
-package ClientHelpers;
+package clientHelpers;
 
 import org.hyperic.sigar.SigarException;
 import utils.OSUtils;

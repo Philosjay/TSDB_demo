@@ -1,6 +1,7 @@
 package app;
 
-import ServerHelper.DaoManager;
+import ServerHelper.daoHelper.DaoManager;
+import ServerHelper.daoHelper.DaoManagerDistributer;
 import ServerHelper.InfoReceiver;
 import ServerHelper.TableNameModifier;
 import dao.InfoDao;
@@ -78,8 +79,9 @@ public class  DBServer {
 
         private int infoCount=1;
         long startTime;
-        private  DaoManager daoManager = new DaoManager();
-        private final int PSTM_PER_TABLE = 5;
+        private  Map<String,DaoManagerDistributer> daoManagerDistributerMap = new HashMap<String,DaoManagerDistributer>();
+        private InfoReceiver receiver = new InfoReceiver();
+
 
         private void putMapListIntoResponse(List<HashMap<String ,Object>> mapList, TableResponse.Builder builder){
 
@@ -117,15 +119,17 @@ public class  DBServer {
 
             String tableName = TableNameModifier.generateTableName(req.getColumnInfoMap().get("type"),req.getUserName());
 
-            if(daoManager.getDao(tableName) == null){
-                InfoDao dao = new InfoDao();
-                dao.prepareConnection();
-                //默认准备2个 PreparedStatement
-                dao.prepareBatch(info,tableName,PSTM_PER_TABLE);
+            if(daoManagerDistributerMap.get(tableName) == null){
+                DaoManagerDistributer distributer = new DaoManagerDistributer();
+                distributer.prepareDao(tableName,info);
+                DaoManager mng = distributer.getDaoManager();
 
-                /** 一个table 对应一个Dao, 也就拥有了一个专属的Connection **/
-                daoManager.claimDao(tableName, dao);
 
+                /** 一个table 对应一个DaoManager, 也就拥有了多个专属的Connection **/
+                mng.prepareDao(tableName, info);
+
+                InfoDao dao = mng.getDao();
+                daoManagerDistributerMap.put(tableName,distributer);
                 if(!dao.isTableExist(tableName))	dao.createTable(tableName);
 
                 // 一个数据对象对应一张table，如果表不存在添加新table
@@ -155,7 +159,7 @@ public class  DBServer {
         }
 
 
-
+//
 //        @Override
 //        public void recordInfo(InfoRequest req, StreamObserver<TableResponse> responseObserver){
 //            /** 录入信息时, 调出该table 专属的Dao **/
@@ -198,8 +202,6 @@ public class  DBServer {
 //            infoCount++;
 //        }
 
-        InfoReceiver rcv = new InfoReceiver(daoManager);
-
         @Override
         public  StreamObserver<InfoRequest> recordInfoByStreamChat(final StreamObserver<TableResponse> responseObserver) {
 
@@ -213,12 +215,22 @@ public class  DBServer {
 
 
                     String tableName = TableNameModifier.generateTableName(req.getColumnInfoMap().get("type"),req.getUserName());
-                    HashMap<String,Object> info = new HashMap<String, Object>(req.getColumnInfoMap());
+                    Map<String,Object> info = new HashMap<String, Object>(req.getColumnInfoMap());
 
-                    int count = daoManager.addInfoANDRequireBatchExcecution(info,tableName);
+
+
+//                    daoManagerDistributerMap.get(tableName).getDaoManager().addInfoANDRequireBatchExcecution(info);
+//                    int count = daoManagerDistributerMap.get(tableName).countInsert();
+
+
+
+
+                    receiver.receiveInfo(info,daoManagerDistributerMap.get(tableName),tableName);
+                    int count = receiver.infoCount;
+
                     if (count%200000 ==0){
                         long end = System.currentTimeMillis();
-                        System.out.println(count + "th     "  + tableName + "    " + (float)(end-startTime)/1000);
+                        System.out.println(count + "th     "  + tableName + "    " + (float)(end-startTime)/1000 + "    "+ receiver.infoCount);
                         startTime = System.currentTimeMillis();
 
                         TableResponse response = TableResponse.newBuilder().setMesg("recording " + count + "th" ).build();
@@ -260,15 +272,16 @@ public class  DBServer {
                     String tableName = TableNameModifier.generateTableName(req.getColumnInfoMap().get("type"),req.getUserName());
                     HashMap<String,Object> info = new HashMap<String, Object>(req.getColumnInfoMap());
 
-                    int count = daoManager.addInfoANDRequireBatchExcecution(info,tableName);
-                    if (count%200000 ==0){
-                        long end = System.currentTimeMillis();
-                        System.out.println(count + "th     "  + tableName + "    " + (float)(end-startTime)/1000);
-                        startTime = System.currentTimeMillis();
-
-                    }
-
-                    infoCount++;
+                    daoManagerDistributerMap.get(tableName).getDaoManager().addInfoANDRequireBatchExcecution(info);
+//                    int count = daoManagerDistributerMap.get(tableName).countInsert();
+//                    if (count%200000 ==0){
+//                        long end = System.currentTimeMillis();
+//                        System.out.println(count + "th     "  + tableName + "    " + (float)(end-startTime)/1000);
+//                        startTime = System.currentTimeMillis();
+//
+//                    }
+//
+//                    infoCount++;
                 }
 
                 @Override
@@ -290,9 +303,9 @@ public class  DBServer {
             logger.info("tring to find info for: " + req.getDevName());
 
             String tableName = TableNameModifier.generateTableName(req.getDevName(),req.getUserName());
-            InfoDao dao = daoManager.getDao(tableName);
+            InfoDao dao = daoManagerDistributerMap.get(tableName).getDaoManager().getDao();
 
-            HashMap<String ,Object> infoMap = new HashMap<>(req.getColumnInfoMap());
+            HashMap<String ,Object> infoMap = new HashMap<String ,Object>(req.getColumnInfoMap());
             List<HashMap<String ,Object>> mapList = dao.findInfo(tableName,infoMap);
 
             for (int i=0; i< mapList.size(); i++){
