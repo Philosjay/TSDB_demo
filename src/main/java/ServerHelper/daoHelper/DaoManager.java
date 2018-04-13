@@ -1,12 +1,13 @@
 package ServerHelper.daoHelper;
 
+import ServerHelper.InfoHolder;
 import dao.InfoDao;
 
 import java.util.HashMap;
 import java.util.Map;
 
 public class DaoManager {
-    private final int PSTM_PER_TABLE = 8;
+    private final int PSTM_PER_TABLE = 6;
 
     private InfoDao dao = null;
     private BatchExcecutionJudger batchExcecutionJudger = null;
@@ -29,16 +30,31 @@ public class DaoManager {
     }
 
 
-    synchronized public void addInfoANDRequireBatchExcecution(Map<String,Object> info){
-        addInfoToBatch(info);
-        requireBatchExcecution(false);
-    }
-
-    synchronized public void addInfoToBatch(Map<String,Object> info){
+    synchronized public void addInfoANDRequireBatchExcecution(InfoHolder[] info){
+//        addInfoToBatch(info);
+//        requireBatchExcecution(false);
 
 
         dao.addInfoToBatch(info,batchExcecutionJudger.getCurrentPstmIndex());
-        batchExcecutionJudger.countInsert();
+        batchExcecutionJudger.countInsert(info.length);
+
+        if ( batchExcecutionJudger.toExcBatch()){
+//            Thread thrd = new Thread(new ThreadForBatchExcecution(dao,batchExcecutionJudger.getCurrentPstmIndex()));
+//            thrd.start();
+
+            dao.executeBatch(batchExcecutionJudger.getCurrentPstmIndex());
+            //提交后切换待命pstm
+            batchExcecutionJudger.switchPstmIndex();
+
+
+        }
+    }
+
+    synchronized public void addInfoToBatch(InfoHolder[] info){
+
+
+//        dao.addInfoToBatch(info,batchExcecutionJudger.getCurrentPstmIndex());
+//        batchExcecutionJudger.countInsert();
 
     }
 
@@ -46,8 +62,8 @@ public class DaoManager {
 
         //开辟pstm批量插入DB的线程
         if (isFinal || batchExcecutionJudger.toExcBatch()){
-            Thread thrd = new Thread(new ThreadForBatchExcecution(dao,batchExcecutionJudger.getCurrentPstmIndex()));
-            thrd.start();
+//            Thread thrd = new Thread(new ThreadForBatchExcecution(dao,batchExcecutionJudger.getCurrentPstmIndex()));
+//            thrd.start();
 
             //提交后切换待命pstm
             batchExcecutionJudger.switchPstmIndex();

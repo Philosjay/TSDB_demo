@@ -202,6 +202,7 @@ public class  DBServer {
 //            infoCount++;
 //        }
 
+        int count = 0;
         @Override
         public  StreamObserver<InfoRequest> recordInfoByStreamChat(final StreamObserver<TableResponse> responseObserver) {
 
@@ -219,8 +220,8 @@ public class  DBServer {
 
 
 
-//                    daoManagerDistributerMap.get(tableName).getDaoManager().addInfoANDRequireBatchExcecution(info);
-//                    int count = daoManagerDistributerMap.get(tableName).countInsert();
+//                    daoManagerDistributerMap.get(tableName).getDaoManager(0).addInfoANDRequireBatchExcecution(info);
+//                    int count = daoManagerDistributerMap.get(tableName);
 
 
 

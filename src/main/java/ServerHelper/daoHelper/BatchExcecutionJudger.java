@@ -22,9 +22,9 @@ public class BatchExcecutionJudger {
         PSTM_PER_TABLE = pstmCount;
     }
 
-    public void countInsert(){
-        count++;
-        insertsCount++;
+    public void countInsert(int n){
+        count+=n;
+        insertsCount+=n;
     }
 
     public int getCurrentPstmIndex() {
@@ -34,9 +34,9 @@ public class BatchExcecutionJudger {
     public boolean toExcBatch(){
 
         boolean toExc = false;
-        if (insertsCount % (INSERTS_PER_BATCH) == 0 && insertsCount>0){
+        if (insertsCount >= INSERTS_PER_BATCH){
             toExc =true;
-            insertsCount = 0;
+            insertsCount -= INSERTS_PER_BATCH;
         }
 
 

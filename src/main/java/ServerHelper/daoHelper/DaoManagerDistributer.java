@@ -5,9 +5,9 @@ import java.util.HashMap;
 import java.util.List;
 
 public class DaoManagerDistributer {
-    private final int DAOPERSTUB = 3;
+    private final int DAOPERSTUB = 5;
     public int curDaoIndex = 0;
-    private int INSERTSPERDAO = 600000; //Distributer 负责让每个DaoMng获得指定数量的信息后，切换待命DaoMng
+    private int INSERTSPERDAO = 200000; //Distributer 负责让每个DaoMng获得指定数量的信息后，切换待命DaoMng
 
 
     private DaoManager[] mngArray = new DaoManager[DAOPERSTUB];

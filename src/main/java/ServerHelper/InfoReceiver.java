@@ -11,7 +11,7 @@ import java.util.List;
 import java.util.Map;
 
 public class InfoReceiver {
-    private int BUFFERSIZE = 1000;     //根据模块测试，数组长度为1000时插入效率最高，但跟其他模块配合时这个值不一定最优
+    private int BUFFERSIZE = 10000;     //根据模块测试，数组长度为1000时插入效率最高，但跟其他模块配合时这个值不一定最优
     private  InfoHolder[] infoArray = new InfoHolder[BUFFERSIZE];
     public int infoCount = 0;
     private int infoIndex = 0;
@@ -29,8 +29,11 @@ public class InfoReceiver {
         infoCount++;
         infoIndex++;
         daoIndex = distr.curDaoIndex;
-        releaseBuffer(distr.getDaoManager(infoCount),tableName,false);
 
+
+        if (infoIndex == BUFFERSIZE){
+            releaseBuffer(distr.getDaoManager(infoCount),tableName,false);
+        }
 
     }
 
@@ -48,6 +51,8 @@ public class InfoReceiver {
 //            System.out.println("curDaoMng " + daoIndex);
             Thread thrd = new Thread(new ThreadForBatchInsert(mng,infoArray,tableName,isFinal));
             thrd.start();
+
+//            mng.addInfoANDRequireBatchExcecution(infoArray);
 
             infoIndex = 0;
         }

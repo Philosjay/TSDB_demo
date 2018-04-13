@@ -21,10 +21,6 @@ public class ThreadForBatchInsert implements Runnable{
 
     @Override
     public void run() {
-        for (InfoHolder info:
-             info) {
-            daoManager.addInfoANDRequireBatchExcecution(info.map);
-        }
-
+        daoManager.addInfoANDRequireBatchExcecution(info);
     }
 }

@@ -4,6 +4,7 @@ import java.sql.*;
 import java.util.*;
 import java.util.Map.Entry;
 
+import ServerHelper.InfoHolder;
 import utils.JdbcUtils;
 
 public class InfoDao {
@@ -103,26 +104,27 @@ public class InfoDao {
 		}
 	}
 	
-	public void addInfoToBatch(Map<String, Object> info,int pstmIndex){
+	public void addInfoToBatch(InfoHolder[] info, int pstmIndex){
 		
 		//插入信息
-		try {			
+		try {
+		    for (int i=0;i<info.length;i++){
+                PreparedStatement pstm = pstmArray[pstmIndex];
+                //遍历HashMap，获得列名称
+                int j =1;
+                Iterator iter = info[i].map.entrySet().iterator();
+                while (iter.hasNext()) {
+                    Map.Entry entry = (Map.Entry)iter.next();
+                    Object val = entry.getValue();
 
-			PreparedStatement pstm = pstmArray[pstmIndex];
-			//遍历HashMap，获得列名称
-			int i =1;
-			Iterator iter = info.entrySet().iterator();
-			while (iter.hasNext()) {
-				Map.Entry entry = (Map.Entry)iter.next();
-				Object val = entry.getValue();
+                    pstm.setString(j, val.toString());
+                    j++;
+                }
 
-				pstm.setString(i, val.toString());
-				i++;
-			}
+                pstm.addBatch();
+            }
 
 
-
-			pstm.addBatch();
 
 		} catch (SQLException e) {
 			// TODO Auto-generated catch block
