@@ -25,14 +25,14 @@ public class InfoReceiver {
     synchronized public void receiveInfo(Map<String,Object> info, DaoManagerDistributer distr, String tableName){
 
         // info 存入定长Array 效率更高
-        infoArray[infoIndex] = new InfoHolder(info);
+//        infoArray[infoIndex] = new InfoHolder(info);
         infoCount++;
         infoIndex++;
         daoIndex = distr.curDaoIndex;
 
 
         if (infoIndex == BUFFERSIZE){
-            releaseBuffer(distr.getDaoManager(infoCount),tableName,false);
+//            releaseBuffer(distr.getDaoManager(infoCount),tableName,false);
         }
 
     }
@@ -49,10 +49,9 @@ public class InfoReceiver {
         //开辟缓存信息插入pstm的线程
         if (infoIndex == BUFFERSIZE){
 //            System.out.println("curDaoMng " + daoIndex);
-            Thread thrd = new Thread(new ThreadForBatchInsert(mng,infoArray,tableName,isFinal));
-            thrd.start();
+//            Thread thrd = new Thread(new ThreadForBatchInsert(mng,infoArray,tableName,isFinal));
+//            thrd.start();
 
-//            mng.addInfoANDRequireBatchExcecution(infoArray);
 
             infoIndex = 0;
         }

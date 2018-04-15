@@ -30,6 +30,7 @@ service DBService {
   rpc recordInfo (InfoRequest) returns (TableResponse) {}
   rpc recordInfoByStream (stream InfoRequest) returns (TableResponse) {}
   rpc recordInfoByStream_chat (stream InfoRequest) returns (stream TableResponse) {}
+  rpc recordInfoByStream_packet_chat (stream InfoRequest) returns (stream TableResponse) {}
   rpc findInfo (InfoRequest) returns (TableResponse) {}
   rpc executeSQLForUpdate (SQLRequest) returns (TableResponse) {}
   rpc executeSQLForQuery (SQLRequest) returns (TableResponse) {}
@@ -52,7 +53,9 @@ message InfoRequest{
     string mesg = 4;
     string pstmIndex = 5;
     bool isFinal = 6;
+    repeated InfoMap infoPacket = 7;
 }
+
 
 message InfoMap{
     map<string,string> infoMap = 1;

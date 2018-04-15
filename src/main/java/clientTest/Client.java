@@ -7,11 +7,9 @@ import io.grpc.ManagedChannel;
 import io.grpc.ManagedChannelBuilder;
 import io.grpc.Status;
 import io.grpc.StatusRuntimeException;
-import io.grpc.dao.DBServiceGrpc;
-import io.grpc.dao.InfoRequest;
-import io.grpc.dao.SQLRequest;
-import io.grpc.dao.TableResponse;
+import io.grpc.dao.*;
 import io.grpc.stub.StreamObserver;
+import org.omg.PortableInterceptor.SYSTEM_EXCEPTION;
 
 import java.util.*;
 import java.util.concurrent.CountDownLatch;
@@ -22,6 +20,7 @@ import java.util.logging.Logger;
 public class Client implements Runnable{
     private final int MAXINFO = 600000 ;
     private final int INFOPERCOMMIT = 100000;
+    private final int PACKETSIZE = 10000;
 
 
     /** 远程链接准备项 **/
@@ -69,18 +68,34 @@ public class Client implements Runnable{
             syncRemoteDB();
 
 
-            List<InfoRequest> reqList = getRequestList();
+
 
             try {
-                for (int j=0;j<4;j++){
+//                List<InfoRequest> reqList = getRequestList();
+//                for (int j=0;j<4;j++){
+//                    long start = System.currentTimeMillis();
+//                    for (int i=0;i<MAXINFO/INFOPERCOMMIT;i++){
+//                        recordInfoByStream_chat(reqList);
+//                    }
+//                    long end = System.currentTimeMillis();
+//                    System.out.println((float)(end - start)/1000);
+//                    Thread.sleep(2500);
+//                }
+
+                InfoRequest request = getRequestPacket();
+
+                for (int j=0;j<160;j++){
                     long start = System.currentTimeMillis();
-                    for (int i=0;i<MAXINFO/INFOPERCOMMIT;i++){
-                        recordInfoByStream_chat(reqList);
-                    }
+
+                    recordInfoByStream_chat_packet(request);
+
                     long end = System.currentTimeMillis();
                     System.out.println((float)(end - start)/1000);
-                    Thread.sleep(2500);
+//                    Thread.sleep(2500);
                 }
+
+
+
 
             } catch (Exception e) {
                 e.printStackTrace();
@@ -108,6 +123,22 @@ public class Client implements Runnable{
             Object value = entry.getValue();
             builder.putColumnInfo(key.toString(),value.toString());
         }
+
+    }
+    private void packIntoBuilder(HashMap<String,Object> map, InfoRequest.Builder builder ){
+
+        InfoMap.newBuilder();
+        HashMap<String,String> infoMap = new HashMap<>();
+        //遍历HashMap，获得列名称
+        Iterator iter = map.entrySet().iterator();
+        while (iter.hasNext()) {
+            Map.Entry entry = (Map.Entry)iter.next();
+            Object key = entry.getKey();
+            Object value = entry.getValue();
+            infoMap.put(key.toString(),value.toString());
+
+        }
+        builder.addInfoPacket(InfoMap.newBuilder().putAllInfoMap(infoMap));
 
     }
 
@@ -348,6 +379,47 @@ public class Client implements Runnable{
         return reqList;
     }
 
+    private InfoRequest getRequestPacket(){
+
+        List<HashMap<String,Object>> infoList = new ArrayList<HashMap<String,Object>>();
+
+        for(int i = 0; i < infoCollectors.size(); i++){
+            InfoCollector collector =  infoCollectors.get(i);
+            int mapListSize = collector.getInfoHashList().size();
+
+            for (int j = 0; j < mapListSize; j ++){
+                HashMap<String,Object> map = collector.filterInfo(collector.getInfoHashList().get(j));
+                infoList.add(map);
+            }
+        }
+
+        int count=0;
+        InfoRequest.Builder builder = InfoRequest.newBuilder();
+
+        while (true){
+
+            for (HashMap<String,Object> map:
+                    infoList) {
+
+                if (count == PACKETSIZE){
+                    break;
+                }
+
+                builder.setUserName(userName);
+                map.replace("userUseRate",count + 1);
+                packIntoBuilder(map,builder);
+                builder.setMesg(count + "");
+
+                count++;
+            }
+            if (count == PACKETSIZE){
+                System.out.println(count);
+                break;
+            }
+        }
+        return builder.build();
+    }
+
     private List<List<InfoRequest>> getRequestPacketList(){
 
         List<HashMap<String,Object>> infoList = new ArrayList<>();
@@ -467,7 +539,7 @@ public class Client implements Runnable{
         finishLatch.await(1, TimeUnit.MINUTES);
     }
 
-    private int count =0;
+    int count = 0;
     public void recordInfoByStream_chat(List<InfoRequest> infoList){
 //        logger.info("*** RecordRoute");
         final CountDownLatch finishLatch = new CountDownLatch(1);
@@ -480,12 +552,7 @@ public class Client implements Runnable{
 
         try {
             for (int i=0;i<infoList.size();i++){
-//                if (count == 200000 ){
-//                    if (responseStreamObserver.toContinue()){
-//                        count =0;
-//                        continue;
-//                    }
-//                }
+
                 requestObserver.onNext(infoList.get(i));
 
                 count++;
@@ -500,4 +567,25 @@ public class Client implements Runnable{
         requestObserver.onCompleted();
     }
 
+
+    public void recordInfoByStream_chat_packet(InfoRequest infoPacket){
+        final CountDownLatch finishLatch = new CountDownLatch(1);
+
+
+        ResponseStreamObserverImpl responseStreamObserver = new ResponseStreamObserverImpl(finishLatch);
+        //写入监听
+        StreamObserver<InfoRequest> requestObserver = asyncStub.recordInfoByStreamPacketChat(responseStreamObserver);
+        //写回监听
+
+        try {
+                requestObserver.onNext(infoPacket);
+                count++;
+
+        } catch (RuntimeException e) {
+            requestObserver.onError(e);
+            throw e;
+        } //标识写完
+
+        requestObserver.onCompleted();
+    }
 }

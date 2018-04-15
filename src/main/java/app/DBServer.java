@@ -77,7 +77,7 @@ public class  DBServer {
 
     static class DaoImpl extends DBServiceGrpc.DBServiceImplBase {
 
-        private int infoCount=1;
+        private int infoCount=0;
         long startTime;
         private  Map<String,DaoManagerDistributer> daoManagerDistributerMap = new HashMap<String,DaoManagerDistributer>();
         private InfoReceiver receiver = new InfoReceiver();
@@ -202,7 +202,7 @@ public class  DBServer {
 //            infoCount++;
 //        }
 
-        int count = 0;
+
         @Override
         public  StreamObserver<InfoRequest> recordInfoByStreamChat(final StreamObserver<TableResponse> responseObserver) {
 
@@ -241,6 +241,70 @@ public class  DBServer {
 
 
                     infoCount++;
+                }
+
+
+                @Override
+                synchronized public void onError(Throwable t) {
+                    logger.info("Encountered error in recordInfoByStream");
+                }
+
+                @Override
+                synchronized public void onCompleted() {
+                    responseObserver.onNext(TableResponse.newBuilder().build());
+                    responseObserver.onCompleted();
+                }
+
+            };
+
+        }
+
+        @Override
+        public  StreamObserver<InfoRequest> recordInfoByStreamPacketChat(final StreamObserver<TableResponse> responseObserver) {
+
+            return new StreamObserver<InfoRequest>() {
+
+                @Override
+                public void onNext(InfoRequest req) {
+                    if(infoCount ==1 ){
+                        startTime=System.currentTimeMillis();//记录开始时间
+                    }
+
+
+                    String tableName = TableNameModifier.generateTableName(req.getColumnInfoMap().get("type"),req.getUserName());
+                    List<InfoMap> infoPacket = req.getInfoPacketList();
+
+
+//                    System.out.println(infoPacket.size());
+
+//                    daoManagerDistributerMap.get(tableName).getDaoManager(0).addInfoANDRequireBatchExcecution(info);
+//                    int count = daoManagerDistributerMap.get(tableName);
+
+
+                    infoCount += infoPacket.size();
+//                    System.out.println(infoCount);
+                    if (infoCount%200000 == 0){
+                        long end = System.currentTimeMillis();
+                        System.out.println(infoCount + "th     "  + tableName + "    " + (float)(end-startTime)/1000 + "    "+ receiver.infoCount);
+                        startTime = System.currentTimeMillis();
+                    }
+
+
+//                    receiver.receiveInfo(null,daoManagerDistributerMap.get(tableName),tableName);
+                    int count = receiver.infoCount;
+
+                    if (count%200000 ==0){
+                        long end = System.currentTimeMillis();
+//                        System.out.println(count + "th     "  + tableName + "    " + (float)(end-startTime)/1000 + "    "+ receiver.infoCount);
+                        startTime = System.currentTimeMillis();
+
+                        TableResponse response = TableResponse.newBuilder().setMesg("recording " + count + "th" ).build();
+
+                        responseObserver.onNext(response);
+                    }
+
+
+//                    infoCount++;
                 }
 
 
