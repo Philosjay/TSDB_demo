@@ -16,6 +16,7 @@ public class ResponseStreamObserverImpl implements StreamObserver<TableResponse>
 
     @Override
     public void onNext(TableResponse note) {
+
         toContinue = true;
     }
 

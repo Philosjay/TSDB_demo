@@ -1,8 +1,9 @@
 package ServerHelper.daoHelper;
 
+import ServerHelper.ArgsForTableAndBatch;
+
 public class BatchExcecutionJudger {
     private long insertsCount;
-    private int currentPstmIndex;
     private final long INSERTS_PER_BATCH;
     private final int PSTM_PER_TABLE ;
     boolean isFinalBatch;
@@ -13,12 +14,11 @@ public class BatchExcecutionJudger {
     BatchExcecutionJudger(int pstmCount){
         insertsCount = 0;
         pstmIndex = 0;
-        currentPstmIndex = 0;
         isFinalBatch = false;
 
 
         // 这两个参数的大小配合很重要，否则导致pstm 繁忙，信息丢失！
-        INSERTS_PER_BATCH = 200000;
+        INSERTS_PER_BATCH = ArgsForTableAndBatch.activeBatch;
         PSTM_PER_TABLE = pstmCount;
     }
 
@@ -28,7 +28,7 @@ public class BatchExcecutionJudger {
     }
 
     public int getCurrentPstmIndex() {
-        return currentPstmIndex;
+        return pstmIndex;
     }
 
     public boolean toExcBatch(){
@@ -47,8 +47,8 @@ public class BatchExcecutionJudger {
     public void switchPstmIndex(){
 
         pstmIndex++;
-        pstmIndex = pstmIndex % (PSTM_PER_TABLE);
-
-        currentPstmIndex =  pstmIndex;
+        if (pstmIndex == PSTM_PER_TABLE){
+            pstmIndex =0;
+        }
     }
 }

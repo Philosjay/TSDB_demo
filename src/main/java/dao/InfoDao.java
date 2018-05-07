@@ -41,9 +41,10 @@ public class InfoDao {
 		try {
 //			con = JdbcUtils.getConnection();
 
-			con = new Connection[8];
-			for (int i=0;i<8;i++){
+			con = new Connection[1];
+			for (int i=0;i<1;i++){
 				con[i] = JdbcUtils.getConnection();
+				con[i].setAutoCommit(false);
 			}
 
 		} catch (Exception e) {
@@ -61,7 +62,7 @@ public class InfoDao {
 		}
 	}
 	
-	public void prepareBatch(HashMap<String, Object> info,String tableName,int pstmCount){
+	public void prepareBatch(Map<String, Object> info,String tableName,int pstmCount){
 		
 		//插入信息
 		try {			
@@ -93,7 +94,7 @@ public class InfoDao {
 			pstmArray = new PreparedStatement[pstmCount];
 			for (int j=0 ;j<pstmCount; j++){
 //				PreparedStatement pstm = con.prepareStatement(sql_cols + sql_values);
-				PreparedStatement pstm = con[j].prepareStatement(sql_cols + sql_values);
+				PreparedStatement pstm = con[0].prepareStatement(sql_cols + sql_values);
 				pstmArray[j] = pstm;
 			}
 
@@ -105,7 +106,8 @@ public class InfoDao {
 	}
 	
 	public void addInfoToBatch(InfoHolder[] info, int pstmIndex){
-		
+
+
 		//插入信息
 		try {
 		    for (int i=0;i<info.length;i++){
@@ -126,7 +128,7 @@ public class InfoDao {
 
 
 
-		} catch (SQLException e) {
+		} catch (Exception e) {
 			// TODO Auto-generated catch block
 			throw new RuntimeException(e);
 		}
@@ -134,9 +136,18 @@ public class InfoDao {
 
 	
 	public void executeBatch(int pstmIndex){
+
+//		System.out.println("                exc");
+//		try {
+//			Thread.sleep(10000);
+//		} catch (InterruptedException e) {
+//			e.printStackTrace();
+//		}
+
 		try {
 			PreparedStatement pstm = pstmArray[pstmIndex];
 			pstm.executeBatch();
+			con[0].commit();
 			
 		} catch (SQLException e) {
 			// TODO Auto-generated catch block
@@ -177,11 +188,20 @@ public class InfoDao {
 	public void createTable(String tableName){
 		try{
 			String sql = "CREATE table " + tableName;
-			sql += "(" + "id INT UNSIGNED  PRIMARY KEY AUTO_INCREMENT,"
-					+	"name varchar(50),"
-					+ 	"time TIMESTAMP, "
-					+ "type varchar(50) "
-					+ ")";
+			sql += "("
+	//				+ "id INT UNSIGNED  PRIMARY KEY AUTO_INCREMENT ,"
+					+ 	"time char(25) , "
+					+	"name varchar(10) "
+	//				+ " PRIMARY KEY (name, time)"
+	//				+ "type varchar(50) "
+					+ ")"
+					+  "engine=MyISAM ";
+
+
+//			sql += "("	+ "name varchar(50),"
+//					+ 	"time TIMESTAMP, "
+//					+ "type varchar(50) "
+//					+ ")";
 			stm = con[0].createStatement();
 			stm.executeUpdate(sql);
 			
@@ -240,7 +260,7 @@ public class InfoDao {
 		try{						
 			stm = con[0].createStatement();
 
-			String sql = "ALTER TABLE " + tableName +" ADD column " +  colName + " double";
+			String sql = "ALTER TABLE " + tableName +" ADD column " +  colName + " float";
 			stm.executeUpdate(sql);
 
 		}catch(Exception e){
@@ -312,6 +332,38 @@ public class InfoDao {
             List<HashMap<String,Object>> mapList = generateMapListFromResultSet(rs);
 			rsmd = rs.getMetaData();
             return mapList;
+
+        }catch(Exception e){
+            throw new RuntimeException(e);
+        }
+        finally{
+            try {
+                if(stm!=null)stm.close();
+            } catch (SQLException e) {
+                // TODO Auto-generated catch block
+                throw new RuntimeException(e);
+            }
+
+        }
+    }
+
+    public int getRowCountInTable(String tableName){
+        try{
+            String sql = "select count(0) from " + tableName ;
+            stm = con[0].createStatement();
+
+            rs = stm.executeQuery(sql);
+
+            int count=0;
+            while (rs.next()){
+                count = rs.getInt("count(0)");
+            }
+
+            List<HashMap<String,Object>> mapList = generateMapListFromResultSet(rs);
+            rsmd = rs.getMetaData();
+
+
+            return count;
 
         }catch(Exception e){
             throw new RuntimeException(e);

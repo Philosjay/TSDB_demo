@@ -7,12 +7,12 @@ import java.util.HashMap;
 import java.util.Map;
 
 public class DaoManager {
-    private final int PSTM_PER_TABLE = 6;
+    private final int PSTM_PER_TABLE = 1;
 
     private InfoDao dao = null;
     private BatchExcecutionJudger batchExcecutionJudger = null;
 
-    synchronized public void prepareDao(String tableName,HashMap<String,Object> info){
+    synchronized public void prepareDao(String tableName,Map<String,Object> info){
 
 
             dao = new InfoDao();
@@ -31,16 +31,14 @@ public class DaoManager {
 
 
     synchronized public void addInfoANDRequireBatchExcecution(InfoHolder[] info){
-//        addInfoToBatch(info);
-//        requireBatchExcecution(false);
+
 
 
         dao.addInfoToBatch(info,batchExcecutionJudger.getCurrentPstmIndex());
         batchExcecutionJudger.countInsert(info.length);
 
+
         if ( batchExcecutionJudger.toExcBatch()){
-//            Thread thrd = new Thread(new ThreadForBatchExcecution(dao,batchExcecutionJudger.getCurrentPstmIndex()));
-//            thrd.start();
 
             dao.executeBatch(batchExcecutionJudger.getCurrentPstmIndex());
             //提交后切换待命pstm
@@ -48,6 +46,13 @@ public class DaoManager {
 
 
         }
+    }
+
+    synchronized public void batchExcecution(InfoHolder[] info){
+
+        dao.addInfoToBatch(info,0);
+        dao.executeBatch(0);
+
     }
 
     synchronized public void addInfoToBatch(InfoHolder[] info){

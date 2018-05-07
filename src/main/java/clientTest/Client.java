@@ -68,31 +68,12 @@ public class Client implements Runnable{
             syncRemoteDB();
 
 
-
-
             try {
-//                List<InfoRequest> reqList = getRequestList();
-//                for (int j=0;j<4;j++){
-//                    long start = System.currentTimeMillis();
-//                    for (int i=0;i<MAXINFO/INFOPERCOMMIT;i++){
-//                        recordInfoByStream_chat(reqList);
-//                    }
-//                    long end = System.currentTimeMillis();
-//                    System.out.println((float)(end - start)/1000);
-//                    Thread.sleep(2500);
-//                }
 
                 InfoRequest request = getRequestPacket();
 
-                for (int j=0;j<160;j++){
-                    long start = System.currentTimeMillis();
-
                     recordInfoByStream_chat_packet(request);
 
-                    long end = System.currentTimeMillis();
-                    System.out.println((float)(end - start)/1000);
-//                    Thread.sleep(2500);
-                }
 
 
 
@@ -114,7 +95,7 @@ public class Client implements Runnable{
     }
 
 
-    private void putMapIntoRequest(HashMap<String,Object> map, InfoRequest.Builder builder ){
+    private void putMapIntoRequest(Map map, InfoRequest.Builder builder ){
         //遍历HashMap，获得列名称
         Iterator iter = map.entrySet().iterator();
         while (iter.hasNext()) {
@@ -125,7 +106,7 @@ public class Client implements Runnable{
         }
 
     }
-    private void packIntoBuilder(HashMap<String,Object> map, InfoRequest.Builder builder ){
+    private void packIntoBuilder(Map map, InfoRequest.Builder builder ){
 
         InfoMap.newBuilder();
         HashMap<String,String> infoMap = new HashMap<>();
@@ -190,23 +171,29 @@ public class Client implements Runnable{
         logger.info(userName + " will try to sync  " + " ...");
 
 
+        // cpu0 信息
+        Map<String,Object> map = infoCollectors.get(0).getInfoMapByIndex(0);
+        map.remove("userUseRate");
+        map.remove("sysUseRate");
+        map.remove("waitRate");
+        map.remove("errorRate");
+        map.remove("idleRate");
+
+        map.remove("time");
+        map.remove("type");
+        map.remove("name");
 
 
-        for(int i=0; i<infoCollectors.size();i++){
-            for (int j=0;j<infoCollectors.get(i).getInfoHashList().size();j++){
-                InfoRequest.Builder builder = InfoRequest.newBuilder();
+        InfoRequest.Builder builder = InfoRequest.newBuilder();
 
-                HashMap<String,Object> map = infoCollectors.get(i).filterInfo(infoCollectors.get(i).getInfoHashList().get(j)) ;
-                //更新table 的列
+        //更新table 的列
 
-                putMapIntoRequest(map,builder);
+        putMapIntoRequest(map,builder);
 
-                builder.setUserName(userName);
-                InfoRequest request = builder.build();
-                TableResponse response = blockingStub.updateTables(request);
-                logger.info(response.getMesg());
-            }
-        }
+        builder.setUserName(userName);
+        InfoRequest request = builder.build();
+        TableResponse response = blockingStub.updateTables(request);
+        logger.info(response.getMesg());
 
 
 
@@ -381,41 +368,34 @@ public class Client implements Runnable{
 
     private InfoRequest getRequestPacket(){
 
-        List<HashMap<String,Object>> infoList = new ArrayList<HashMap<String,Object>>();
+        // cpu0 信息
+        Map<String,Object> map = infoCollectors.get(0).getInfoMapByIndex(0);
+        map.remove("userUseRate");
+        map.remove("sysUseRate");
+        map.remove("waitRate");
+        map.remove("errorRate");
+        map.remove("idleRate");
 
-        for(int i = 0; i < infoCollectors.size(); i++){
-            InfoCollector collector =  infoCollectors.get(i);
-            int mapListSize = collector.getInfoHashList().size();
+        map.remove("time");
+        map.remove("type");
+        map.remove("name");
 
-            for (int j = 0; j < mapListSize; j ++){
-                HashMap<String,Object> map = collector.filterInfo(collector.getInfoHashList().get(j));
-                infoList.add(map);
-            }
-        }
 
-        int count=0;
+
+
         InfoRequest.Builder builder = InfoRequest.newBuilder();
 
-        while (true){
+        int count=0;
+        while (count<PACKETSIZE){
 
-            for (HashMap<String,Object> map:
-                    infoList) {
+        builder.setUserName(userName);
+        map.replace("userUseRate",count + 1);
+        packIntoBuilder(map,builder);
+        builder.setDevName("cpu");
+        builder.setMesg(count + "");
 
-                if (count == PACKETSIZE){
-                    break;
-                }
+        count++;
 
-                builder.setUserName(userName);
-                map.replace("userUseRate",count + 1);
-                packIntoBuilder(map,builder);
-                builder.setMesg(count + "");
-
-                count++;
-            }
-            if (count == PACKETSIZE){
-                System.out.println(count);
-                break;
-            }
         }
         return builder.build();
     }
@@ -480,6 +460,20 @@ public class Client implements Runnable{
         }
         return reqPacketList;
     }
+
+    public void recordInfoByBlocked(InfoRequest infoPacket){
+
+
+                InfoRequest.Builder builder = InfoRequest.newBuilder();
+                //更新table 的列
+
+                builder.setUserName(userName);
+                InfoRequest request = builder.build();
+                TableResponse response = blockingStub.recordInfo(infoPacket);
+
+                logger.info(response.getMesg());
+    }
+
 
     public void recordInfoByStream(List<InfoRequest> infoList) throws InterruptedException {
         logger.info("*** RecordRoute");
@@ -577,14 +571,39 @@ public class Client implements Runnable{
         StreamObserver<InfoRequest> requestObserver = asyncStub.recordInfoByStreamPacketChat(responseStreamObserver);
         //写回监听
 
-        try {
+        long start = System.currentTimeMillis();
+        for (int j=0;j<120;j++){
+
+            try {
                 requestObserver.onNext(infoPacket);
                 count++;
 
-        } catch (RuntimeException e) {
-            requestObserver.onError(e);
-            throw e;
-        } //标识写完
+            } catch (RuntimeException e) {
+                requestObserver.onError(e);
+                throw e;
+            } //标识写完
+
+
+
+            if (j%20 == 0){
+//                while (!responseStreamObserver.toContinue()){
+//
+//                }
+
+                try {
+                    Thread.sleep(800);
+                } catch (InterruptedException e) {
+                    e.printStackTrace();
+                }
+                long end = System.currentTimeMillis();
+                System.out.println("             " + (float)(end -start)/1000);
+                start = System.currentTimeMillis();
+            }
+
+
+        }
+
+
 
         requestObserver.onCompleted();
     }

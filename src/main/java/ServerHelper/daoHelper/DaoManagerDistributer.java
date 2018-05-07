@@ -1,18 +1,16 @@
 package ServerHelper.daoHelper;
 
-import java.util.ArrayList;
 import java.util.HashMap;
-import java.util.List;
+import java.util.Map;
 
 public class DaoManagerDistributer {
-    private final int DAOPERSTUB = 5;
+    private final int DAOPERSTUB = 1;
     public int curDaoIndex = 0;
-    private int INSERTSPERDAO = 200000; //Distributer 负责让每个DaoMng获得指定数量的信息后，切换待命DaoMng
 
 
     private DaoManager[] mngArray = new DaoManager[DAOPERSTUB];
 
-    public void prepareDao(String tableName,HashMap<String,Object> info){
+    public void prepareDao(String tableName,Map<String,Object> info){
 
         for (int i=0;i<DAOPERSTUB;i++){
             DaoManager mng = new DaoManager();
@@ -21,18 +19,14 @@ public class DaoManagerDistributer {
         }
     }
 
-    synchronized public DaoManager getDaoManager(int count){
+    synchronized public DaoManager getDaoManager(){
 
-        int index = curDaoIndex;
+        curDaoIndex++;
 
-        if (count>0 && count%INSERTSPERDAO == 0 ){
-            curDaoIndex++;
-
-            if (curDaoIndex == DAOPERSTUB){
-                curDaoIndex = 0;
-            }
+        if (curDaoIndex == DAOPERSTUB){
+            curDaoIndex = 0;
         }
 
-        return mngArray[index];
+        return mngArray[curDaoIndex];
     }
 }

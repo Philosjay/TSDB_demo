@@ -3,6 +3,7 @@ package ServerHelper;
 import ServerHelper.daoHelper.DaoManager;
 import ServerHelper.daoHelper.DaoManagerDistributer;
 import ServerHelper.daoHelper.ThreadForBatchInsert;
+import io.grpc.dao.InfoMap;
 
 import java.lang.reflect.Array;
 import java.util.ArrayList;
@@ -12,23 +13,21 @@ import java.util.Map;
 
 public class InfoReceiver {
     private int BUFFERSIZE = 10000;     //根据模块测试，数组长度为1000时插入效率最高，但跟其他模块配合时这个值不一定最优
-    private  InfoHolder[] infoArray = new InfoHolder[BUFFERSIZE];
     public int infoCount = 0;
     private int infoIndex = 0;
 
-    int daoIndex;
+
 
     public InfoReceiver(){
 
     }
 
-    synchronized public void receiveInfo(Map<String,Object> info, DaoManagerDistributer distr, String tableName){
+    synchronized public void receiveInfo(Map<String,String> info, DaoManagerDistributer distr, String tableName){
 
         // info 存入定长Array 效率更高
 //        infoArray[infoIndex] = new InfoHolder(info);
         infoCount++;
         infoIndex++;
-        daoIndex = distr.curDaoIndex;
 
 
         if (infoIndex == BUFFERSIZE){
@@ -37,8 +36,30 @@ public class InfoReceiver {
 
     }
 
-    synchronized public void recForTest(Map<String,Object> info){
-        infoArray[infoIndex] = new InfoHolder(info);
+    synchronized public void receiveInfoPacket(List<InfoMap> infoPacket, DaoManagerDistributer distr){
+
+        // info 存入定长Array 效率更高
+//        infoArray[infoIndex] = new InfoHolder(info);
+        infoCount+= infoPacket.size();
+        infoIndex+= infoPacket.size();
+
+//        InfoHolder[] infoArray = new InfoHolder[infoPacket.size()];
+//        for (int i=0;i<infoPacket.size();i++){
+//            infoArray[i] = new InfoHolder(infoPacket.get(i).getInfoMapMap());
+//
+//        }
+
+
+//        distr.getDaoManager().addInfoANDRequireBatchExcecution(infoArray);
+
+//        Thread thrd = new Thread(new ThreadForBatchInsert(distr.getDaoManager(),infoArray));
+//        thrd.start();
+
+
+    }
+
+    synchronized public void recForTest(Map<String,String> info){
+//        infoArray[infoIndex] = new InfoHolder(info);
         infoCount++;
         infoIndex++;
         releaseBuffer(null,"",false);

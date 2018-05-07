@@ -116,6 +116,8 @@ public class OSUtils {
         }
      
      public static  List<HashMap<String, Object>> getCpuPercMapList() throws SigarException{
+         // 有多个cpu，每个cpu信息放在一个List里面
+
     	 Sigar sigar = new Sigar();
     	 CpuPerc cpuList[] = null;
          cpuList = sigar.getCpuPercList();
@@ -131,9 +133,8 @@ public class OSUtils {
         	 tmp.put("errorRate",cpuList[i].getNice());
         	 tmp.put("idleRate",cpuList[i].getIdle());
         	 tmp.put("totalUseRate",cpuList[i].getCombined());
-        	 tmp.put("type","cpu");
         	 
-        	 SimpleDateFormat df = new SimpleDateFormat("yyyy-MM-dd-HH-mm-ss");
+        	 SimpleDateFormat df = new SimpleDateFormat("yyyy-MM-dd-HH-mm-ss-SSS");
 /*        	 String[] time = df.format(System.currentTimeMillis()).split("-");
         	 tmp.put("year", time[0]);
         	 tmp.put("month", time[1]);

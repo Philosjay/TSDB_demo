@@ -1,9 +1,12 @@
 package app;
 
+import ServerHelper.InfoHolder;
+import ServerHelper.InfoManager;
 import ServerHelper.daoHelper.DaoManager;
 import ServerHelper.daoHelper.DaoManagerDistributer;
 import ServerHelper.InfoReceiver;
 import ServerHelper.TableNameModifier;
+import ServerHelper.daoHelper.ThreadForBatchInsert;
 import dao.InfoDao;
 import io.grpc.Server;
 import io.grpc.ServerBuilder;
@@ -79,8 +82,7 @@ public class  DBServer {
 
         private int infoCount=0;
         long startTime;
-        private  Map<String,DaoManagerDistributer> daoManagerDistributerMap = new HashMap<String,DaoManagerDistributer>();
-        private InfoReceiver receiver = new InfoReceiver();
+        private InfoManager infoManager = new InfoManager();
 
 
         private void putMapListIntoResponse(List<HashMap<String ,Object>> mapList, TableResponse.Builder builder){
@@ -117,37 +119,10 @@ public class  DBServer {
 
             HashMap<String,Object> info = new HashMap<String, Object>(req.getColumnInfoMap());
 
-            String tableName = TableNameModifier.generateTableName(req.getColumnInfoMap().get("type"),req.getUserName());
+            String tableName = TableNameModifier.generateTableName(req.getColumnInfoMap().get("name"),req.getUserName());
 
-            if(daoManagerDistributerMap.get(tableName) == null){
-                DaoManagerDistributer distributer = new DaoManagerDistributer();
-                distributer.prepareDao(tableName,info);
-                DaoManager mng = distributer.getDaoManager(0);
+            infoManager.init(info);
 
-
-                /** 一个table 对应一个DaoManager, 也就拥有了多个专属的Connection **/
-                mng.prepareDao(tableName, info);
-
-                InfoDao dao = mng.getDao();
-                daoManagerDistributerMap.put(tableName,distributer);
-                if(!dao.isTableExist(tableName))	dao.createTable(tableName);
-
-                // 一个数据对象对应一张table，如果表不存在添加新table
-
-
-                //更新table 的列
-                //遍历HashMap，获得列名称
-                Iterator iter = info.entrySet().iterator();
-                while (iter.hasNext()) {
-                    Map.Entry entry = (Map.Entry)iter.next();
-                    Object key = entry.getKey();
-
-                    if(!dao.isColExist(key.toString(), tableName)){
-                        dao.addColumn(key.toString(),tableName);
-                    }
-
-                }
-            }
 
 
             TableResponse reply = TableResponse.newBuilder().setMesg("update table: " + tableName + " success").build();
@@ -159,48 +134,23 @@ public class  DBServer {
         }
 
 
-//
-//        @Override
-//        public void recordInfo(InfoRequest req, StreamObserver<TableResponse> responseObserver){
-//            /** 录入信息时, 调出该table 专属的Dao **/
-//            String tableName = TableNameModifier.generateTableName(req.getColumnInfoMap().get("type"),req.getUserName());
-//            InfoDao dao = daoManager.getDao(tableName);
-//            HashMap<String,Object> info = new HashMap<String, Object>(req.getColumnInfoMap());
-//
-//            dao.addInfoToBatch(info,tableName,req.getPstmIndex());
-//
-//            if(infoCount ==1 ){
-//                startTime=System.currentTimeMillis();//记录开始时间
-//            }
-//
-//
-//
-//
-//            if (infoCount > 200000){
-//
-//                long endTime=System.currentTimeMillis();//记录结束时间
-//                float excTime=(float)(endTime-startTime)/1000;
-//                System.out.println(excTime);
-//
-//                dao.executeBatch(req.getPstmIndex());
-//
-//                TableResponse reply = TableResponse.newBuilder().setIsExist(true).build();
-//                responseObserver.onNext(reply);
-//                responseObserver.onCompleted();
-//
-//
-//
-//            }else {
-//                TableResponse reply = TableResponse.newBuilder().setIsExist(false).build();
-//                responseObserver.onNext(reply);
-//                responseObserver.onCompleted();
-//                logger.info("recorded info for : " + infoCount + "th" );
-//            }
-//
-//
-//
-//            infoCount++;
-//        }
+
+        @Override
+        public void recordInfo(InfoRequest req, StreamObserver<TableResponse> responseObserver){
+            if(infoCount ==1 ){
+                startTime=System.currentTimeMillis();//记录开始时间
+            }
+
+
+            String tableName = TableNameModifier.generateTableName(req.getDevName(),req.getUserName());
+            List<InfoMap> infoPacket = req.getInfoPacketList();
+
+
+            TableResponse reply = TableResponse.newBuilder().setMesg("record info for : " + tableName + " success").build();
+            responseObserver.onNext(reply);
+            responseObserver.onCompleted();
+
+        }
 
 
         @Override
@@ -216,7 +166,7 @@ public class  DBServer {
 
 
                     String tableName = TableNameModifier.generateTableName(req.getColumnInfoMap().get("type"),req.getUserName());
-                    Map<String,Object> info = new HashMap<String, Object>(req.getColumnInfoMap());
+                    Map<String,String> info = new HashMap<>(req.getColumnInfoMap());
 
 
 
@@ -224,20 +174,20 @@ public class  DBServer {
 //                    int count = daoManagerDistributerMap.get(tableName);
 
 
-
-
-                    receiver.receiveInfo(info,daoManagerDistributerMap.get(tableName),tableName);
-                    int count = receiver.infoCount;
-
-                    if (count%200000 ==0){
-                        long end = System.currentTimeMillis();
-                        System.out.println(count + "th     "  + tableName + "    " + (float)(end-startTime)/1000 + "    "+ receiver.infoCount);
-                        startTime = System.currentTimeMillis();
-
-                        TableResponse response = TableResponse.newBuilder().setMesg("recording " + count + "th" ).build();
-
-                        responseObserver.onNext(response);
-                    }
+//
+//
+//                    receiver.receiveInfo(info,daoManagerDistributerMap.get(tableName),tableName);
+//                    int count = receiver.infoCount;
+//
+//                    if (count%200000 ==0){
+//                        long end = System.currentTimeMillis();
+//                        System.out.println(count + "th     "  + tableName + "    " + (float)(end-startTime)/1000 + "    "+ receiver.infoCount);
+//                        startTime = System.currentTimeMillis();
+//
+//                        TableResponse response = TableResponse.newBuilder().setMesg("recording " + count + "th" ).build();
+//
+//                        responseObserver.onNext(response);
+//                    }
 
 
                     infoCount++;
@@ -271,37 +221,30 @@ public class  DBServer {
                     }
 
 
-                    String tableName = TableNameModifier.generateTableName(req.getColumnInfoMap().get("type"),req.getUserName());
                     List<InfoMap> infoPacket = req.getInfoPacketList();
 
 
-//                    System.out.println(infoPacket.size());
+                    for (int i=0;i<infoPacket.size();i++){
+//                        long count = infoManager.receiveInfo(new InfoHolder(infoPacket.get(i).getInfoMapMap()));
+//
+//                        if (count%200000 ==0){
+//                            long end = System.currentTimeMillis();
+//                            System.out.println((float)(end-startTime)/1000);
+//                            startTime = System.currentTimeMillis();
+//
+//                            TableResponse response = TableResponse.newBuilder().setMesg("recording " + count + "th" ).build();
+//
+//                            responseObserver.onNext(response);
+//                        }
 
-//                    daoManagerDistributerMap.get(tableName).getDaoManager(0).addInfoANDRequireBatchExcecution(info);
-//                    int count = daoManagerDistributerMap.get(tableName);
 
-
-                    infoCount += infoPacket.size();
-//                    System.out.println(infoCount);
-                    if (infoCount%200000 == 0){
-                        long end = System.currentTimeMillis();
-                        System.out.println(infoCount + "th     "  + tableName + "    " + (float)(end-startTime)/1000 + "    "+ receiver.infoCount);
-                        startTime = System.currentTimeMillis();
                     }
 
 
-//                    receiver.receiveInfo(null,daoManagerDistributerMap.get(tableName),tableName);
-                    int count = receiver.infoCount;
 
-                    if (count%200000 ==0){
-                        long end = System.currentTimeMillis();
-//                        System.out.println(count + "th     "  + tableName + "    " + (float)(end-startTime)/1000 + "    "+ receiver.infoCount);
-                        startTime = System.currentTimeMillis();
 
-                        TableResponse response = TableResponse.newBuilder().setMesg("recording " + count + "th" ).build();
+             //       System.out.println(count);
 
-                        responseObserver.onNext(response);
-                    }
 
 
 //                    infoCount++;
@@ -334,7 +277,7 @@ public class  DBServer {
                         startTime=System.currentTimeMillis();//记录开始时间
                     }
 
-                    String tableName = TableNameModifier.generateTableName(req.getColumnInfoMap().get("type"),req.getUserName());
+                    String tableName = TableNameModifier.generateTableName(req.getColumnInfoMap().get("name"),req.getUserName());
                     HashMap<String,Object> info = new HashMap<String, Object>(req.getColumnInfoMap());
 
 //                    daoManagerDistributerMap.get(tableName).getDaoManager().addInfoANDRequireBatchExcecution(info);
@@ -368,7 +311,7 @@ public class  DBServer {
             logger.info("tring to find info for: " + req.getDevName());
 
             String tableName = TableNameModifier.generateTableName(req.getDevName(),req.getUserName());
-            InfoDao dao = daoManagerDistributerMap.get(tableName).getDaoManager(0).getDao();
+            InfoDao dao = infoManager.getDao();
 
             HashMap<String ,Object> infoMap = new HashMap<String ,Object>(req.getColumnInfoMap());
             List<HashMap<String ,Object>> mapList = dao.findInfo(tableName,infoMap);
